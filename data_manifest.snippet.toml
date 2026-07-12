@@ -1,0 +1,6 @@
+[datasets.raa_extab]
+tier = "warm"
+path = "../raa_convert/extab.pkl"
+phase = "frozen"
+description = "Consolidated RAA export (extab.pkl from raa_convert)"
+parent = ""

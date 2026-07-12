@@ -1,0 +1,184 @@
+:root {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #222;
+  background: #faf8f5;
+}
+
+body {
+  margin: 0 auto;
+  max-width: 960px;
+  padding: 1rem 1.5rem 3rem;
+}
+
+header {
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.75rem;
+}
+
+nav a {
+  margin-right: 1rem;
+  color: #333;
+}
+
+nav a.active {
+  font-weight: bold;
+}
+
+.suggest-field {
+  position: relative;
+}
+
+.suggest-list {
+  position: absolute;
+  z-index: 10;
+  background: #fff;
+  border: 1px solid #ccc;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 12rem;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.suggest-list li {
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+}
+
+.suggest-list li:hover {
+  background: #f0ebe3;
+}
+
+.suggest-list .suggest-empty {
+  color: #666;
+  font-style: italic;
+  cursor: default;
+}
+
+.suggest-list .suggest-empty:hover {
+  background: transparent;
+}
+
+#detail-toelichting {
+  margin: 1rem 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:hover {
+  background: #f0ebe3;
+}
+
+#facets .facet-group {
+  margin-top: 1rem;
+}
+
+#detail[hidden] {
+  display: none !important;
+}
+
+.filter-box,
+.vertegenwoordiging {
+  border: 1px solid #ddd;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.filter-box legend,
+.vertegenwoordiging legend {
+  font-weight: bold;
+  padding: 0 0.25rem;
+}
+
+.filter-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.filter-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.filter-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.filter-col label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.field-hint {
+  font-size: 0.9rem;
+  color: #555;
+  margin: 0 0 0.75rem;
+}
+
+.geo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.geo-col label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.chip-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #e8e2d8;
+  border-radius: 3px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.chip button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+@media (max-width: 720px) {
+  .filter-grid-2,
+  .filter-grid-3,
+  .geo-grid {
+    grid-template-columns: 1fr;
+  }
+}

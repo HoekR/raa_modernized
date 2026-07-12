@@ -1,0 +1,24 @@
+personen:
+  prominent:
+    - naam
+    - period
+  advanced:
+    - stand
+    - adel
+    - vertegenwoordiging
+aanstellingen:
+  prominent:
+    - functie
+    - instelling
+    - period
+    - date_range
+  advanced:
+    - vertegenwoordiging
+instellingen:
+  prominent:
+    - naam
+    - period
+functies:
+  prominent:
+    - naam
+    - period

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "raa-modernized"
+version = "0.1.0"
+description = "DH pipeline with manifest-based data paths"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=3.0",
+    "pyarrow>=24.0",
+    "tomli-w>=1.0",
+    "openpyxl>=3.1.2",
+    "ipykernel",
+    "sqlalchemy>=2.0.51",
+    "psycopg[binary]>=3.3.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["data_io", "tests"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

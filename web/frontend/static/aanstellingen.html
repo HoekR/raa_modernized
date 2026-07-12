@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAA — Aanstellingen</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Repertorium van Ambtenaren en Ambtsdragers</h1>
+    <nav>
+      <a href="/static/index.html">Personen</a>
+      <a href="/static/aanstellingen.html" class="active">Aanstellingen</a>
+      <a href="/static/instellingen.html">Instellingen</a>
+      <a href="/static/functies.html">Functies</a>
+    </nav>
+    <label>
+      Periode
+      <select id="period"></select>
+    </label>
+  </header>
+
+  <main>
+    <section class="search-panel">
+      <h2>Aanstellingen zoeken</h2>
+      <form id="search-form">
+        <label>
+          Persoon (optioneel)
+          <input type="text" name="q" placeholder="naam" />
+        </label>
+        <fieldset class="filter-box">
+          <legend>Functie en instelling</legend>
+          <div class="filter-grid filter-grid-2">
+            <div class="filter-col suggest-field">
+              <label for="functie-input">Functie</label>
+              <input type="text" id="functie-input" autocomplete="off" placeholder="zoek functie…" />
+              <ul id="functie-suggest" class="suggest-list" hidden></ul>
+              <ul id="functie-chips" class="chip-list"></ul>
+            </div>
+            <div class="filter-col suggest-field">
+              <label for="instelling-input">Instelling</label>
+              <input type="text" id="instelling-input" autocomplete="off" placeholder="zoek instelling…" />
+              <ul id="instelling-suggest" class="suggest-list" hidden></ul>
+              <ul id="instelling-chips" class="chip-list"></ul>
+            </div>
+          </div>
+        </fieldset>
+        <label>
+          Van (YYYY-MM-DD)
+          <input type="date" name="van" />
+        </label>
+        <label>
+          Tot (YYYY-MM-DD)
+          <input type="date" name="tot" />
+        </label>
+        <label>
+          Groeperen
+          <select name="group_by">
+            <option value="">Geen</option>
+            <option value="instelling">Instelling</option>
+            <option value="functie">Functie</option>
+          </select>
+        </label>
+        <fieldset class="filter-box">
+          <legend>Vertegenwoordiging</legend>
+          <p class="field-hint">Provincie/departement, regio of plaats/grietenij/kiesdistrict.</p>
+          <div class="filter-grid filter-grid-3">
+            <div class="filter-col suggest-field">
+              <label for="provincie-input">Provinciaal</label>
+              <input type="text" id="provincie-input" autocomplete="off" placeholder="zoek provincie…" />
+              <ul id="provincie-suggest" class="suggest-list" hidden></ul>
+              <ul id="provincie-chips" class="chip-list"></ul>
+            </div>
+            <div class="filter-col suggest-field">
+              <label for="regio-input">Regionaal</label>
+              <input type="text" id="regio-input" autocomplete="off" placeholder="zoek regio…" />
+              <ul id="regio-suggest" class="suggest-list" hidden></ul>
+              <ul id="regio-chips" class="chip-list"></ul>
+            </div>
+            <div class="filter-col suggest-field">
+              <label for="lokaal-input">Lokaal</label>
+              <input type="text" id="lokaal-input" autocomplete="off" placeholder="zoek plaats…" />
+              <ul id="lokaal-suggest" class="suggest-list" hidden></ul>
+              <ul id="lokaal-chips" class="chip-list"></ul>
+            </div>
+          </div>
+        </fieldset>
+        <button type="submit">Zoeken</button>
+      </form>
+      <div id="facets"></div>
+    </section>
+
+    <section>
+      <p id="result-count"></p>
+      <table id="results">
+        <thead>
+          <tr id="results-header"></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/common.js"></script>
+  <script src="/static/aanstellingen.js"></script>
+</body>
+</html>

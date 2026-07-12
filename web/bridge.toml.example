@@ -1,0 +1,10 @@
+[data]
+root = "/path/to/project-data"
+interpreter = "uv run python"
+
+[database]
+url = "postgresql+psycopg://raa:raa@localhost:5432/myproject"
+
+[web]
+root = "."
+api_port = 8000

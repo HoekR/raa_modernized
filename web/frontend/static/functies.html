@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAA — Functies</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Repertorium van Ambtenaren en Ambtsdragers</h1>
+    <nav>
+      <a href="/static/index.html">Personen</a>
+      <a href="/static/aanstellingen.html">Aanstellingen</a>
+      <a href="/static/instellingen.html">Instellingen</a>
+      <a href="/static/functies.html" class="active">Functies</a>
+    </nav>
+    <label>
+      Periode
+      <select id="period"></select>
+    </label>
+  </header>
+
+  <main>
+    <section class="search-panel">
+      <h2>Functies zoeken</h2>
+      <form id="search-form">
+        <label>
+          Naam (wildcards * ?)
+          <input type="text" name="q" placeholder="bijv. burgemeester*" />
+        </label>
+        <button type="submit">Zoeken</button>
+      </form>
+    </section>
+
+    <section>
+      <p id="result-count"></p>
+      <table id="results">
+        <thead>
+          <tr><th>Naam</th><th>Aanstellingen</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="detail" hidden>
+      <h2 id="detail-name"></h2>
+      <p id="detail-count"></p>
+      <button id="back-to-results" type="button">Terug naar resultaten</button>
+    </section>
+  </main>
+
+  <script src="/static/common.js"></script>
+  <script src="/static/functies.js"></script>
+</body>
+</html>
