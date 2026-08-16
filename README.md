@@ -35,28 +35,46 @@ cursor raa-modernized.code-workspace
 | `data_io/` | Manifest I/O and provenance helpers |
 | `web/` | FastAPI search API + static frontend |
 | `scripts/import_release.py` | Load `extab.pkl` into Postgres |
+| `scripts/validation_rq_smoke.py` | Pilot baseline counts for [VALIDATION_RQS.md](docs/VALIDATION_RQS.md) |
+| `scripts/dev.sh` | **Local stack:** Postgres + import-if-empty + API (D-53) |
 
 ## Web app (local)
 
-```bash
-# Postgres (first time)
-docker run -d --name raa_pg \
-  -e POSTGRES_USER=raa -e POSTGRES_PASSWORD=raa -e POSTGRES_DB=raa_modernized \
-  -p 5432:5432 postgres:16
+**Preferred** (self-contained — D-53):
 
+```bash
 cd ~/develop/raa_modernized
 cp config.local.toml.example config.local.toml   # once
-cp data_manifest.local.toml.example data_manifest.local.toml  # edit tier root
-uv run python scripts/import_release.py --skip-validate
+cp data_manifest.local.toml.example data_manifest.local.toml  # edit tier root → extab.pkl
+./scripts/dev.sh          # Postgres + import if empty + API on :8000
+./scripts/dev.sh --prod   # same, but Gunicorn + Uvicorn workers (stable runtime)
+./scripts/dev.sh --import # refresh DB from extab
+./scripts/dev.sh stop     # compose down
+```
 
-cd web/api
-uv sync
+Open http://127.0.0.1:8000 — personen, aanstellingen, instellingen, functies.
+
+<details>
+<summary>Manual steps (legacy / debugging)</summary>
+
+```bash
+# Postgres via compose (or: docker start raa_pg if you still use the old named container)
+docker compose -f web/docker-compose.yml up -d db
+
+cd ~/develop/raa_modernized
+uv run python scripts/import_release.py --skip-validate   # from repo root, not web/api
+
+cd web/api && uv sync
 uv run uvicorn raa_api.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000 — search contexts: personen, aanstellingen, instellingen, functies.
+If `docker run --name raa_pg` conflicts, use `docker start raa_pg` or migrate to compose only.
+
+</details>
 
 Search store: **PostgreSQL** (Elasticsearch deferred). See `PLAN.md` and `docs/MIGRATION_LOG.md` for decisions.
+
+**When the stack stabilizes (D-54):** the compose API service will use **Gunicorn + Uvicorn workers** instead of `uvicorn --reload`; `dev.sh` keeps reload for day-to-day work.
 
 ## Cursor / agents
 

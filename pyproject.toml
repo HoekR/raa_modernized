@@ -24,7 +24,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["data_io", "tests"]
+include = ["data_io", "tests", "raa_life_dates*", "raa_entity_spans*", "raa_search_display*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

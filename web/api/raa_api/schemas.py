@@ -19,6 +19,9 @@ class SearchRequest(BaseModel):
     size: int = Field(default=20, ge=1, le=100)
     sort: str = "geslachtsnaam"
     group_by: str | None = Field(default=None, pattern="^(instelling|functie)$")
+    functie_match: str = Field(default="any", pattern="^(any|all)$")
+    instelling_match: str = Field(default="any", pattern="^(any|all)$")
+    include_shadow_dates: bool = True
 
 
 class FacetValue(BaseModel):

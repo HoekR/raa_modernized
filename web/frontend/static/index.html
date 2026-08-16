@@ -29,16 +29,63 @@
           Naam (wildcards * ?)
           <input type="text" name="q" placeholder="bijv. de*g" />
         </label>
-        <label class="suggest-field">
-          Functie (optioneel)
-          <input type="text" id="functie-input" autocomplete="off" />
-          <ul id="functie-suggest" class="suggest-list" hidden></ul>
-        </label>
-        <label class="suggest-field">
-          Instelling (optioneel)
-          <input type="text" id="instelling-input" autocomplete="off" />
-          <ul id="instelling-suggest" class="suggest-list" hidden></ul>
-        </label>
+        <fieldset class="filter-box life-dates">
+          <legend>Geboorte en overlijden</legend>
+          <p class="field-hint">EDTF-interval, bijv. <code>1720/1750</code>, <code>../1720</code>, <code>1720~</code></p>
+          <div class="filter-grid filter-grid-2">
+            <label>
+              Geboorte
+              <input type="text" name="geboorte" placeholder="bijv. 1700/1750" />
+            </label>
+            <label>
+              Overlijden
+              <input type="text" name="overlijden" placeholder="bijv. ../1800" />
+            </label>
+          </div>
+          <div class="match-mode date-mode">
+            <label><input type="radio" name="date_mode" value="incl_shadow" checked /> incl. geschatte jaartallen</label>
+            <label><input type="radio" name="date_mode" value="exact" /> zoek exacte datums</label>
+          </div>
+        </fieldset>
+        <fieldset class="filter-box">
+          <legend>Aanstellingsdatum</legend>
+          <p class="field-hint">Personen met een aanstelling in dit interval. Jaar (<code>1750</code>) of <code>YYYY-MM-DD</code>.</p>
+          <div class="filter-grid filter-grid-2">
+            <label>
+              Van
+              <input type="text" name="van" placeholder="bijv. 1750" />
+            </label>
+            <label>
+              Tot
+              <input type="text" name="tot" placeholder="bijv. 1770" />
+            </label>
+          </div>
+        </fieldset>
+        <fieldset class="filter-box">
+          <legend>Functie en instelling</legend>
+          <div class="filter-grid filter-grid-2">
+            <div class="filter-col suggest-field">
+              <label for="functie-input">Functie</label>
+              <input type="text" id="functie-input" autocomplete="off" placeholder="zoek functie…" />
+              <ul id="functie-suggest" class="suggest-list" hidden></ul>
+              <ul id="functie-chips" class="chip-list"></ul>
+              <div class="match-mode">
+                <label><input type="radio" name="functie_match" value="any" checked /> of</label>
+                <label><input type="radio" name="functie_match" value="all" /> en</label>
+              </div>
+            </div>
+            <div class="filter-col suggest-field">
+              <label for="instelling-input">Instelling</label>
+              <input type="text" id="instelling-input" autocomplete="off" placeholder="zoek instelling…" />
+              <ul id="instelling-suggest" class="suggest-list" hidden></ul>
+              <ul id="instelling-chips" class="chip-list"></ul>
+              <div class="match-mode">
+                <label><input type="radio" name="instelling_match" value="any" checked /> of</label>
+                <label><input type="radio" name="instelling_match" value="all" /> en</label>
+              </div>
+            </div>
+          </div>
+        </fieldset>
         <fieldset class="vertegenwoordiging">
           <legend>Vertegenwoordiging</legend>
           <p class="field-hint">Provincie/departement, regio of plaats/grietenij/kiesdistrict. Kies meerdere per kolom indien nodig.</p>
@@ -63,6 +110,15 @@
             </div>
           </div>
         </fieldset>
+        <fieldset class="filter-box">
+          <legend>Stand en adel</legend>
+          <label class="adel-option">
+            <input type="checkbox" name="adel" />
+            Alleen adel
+          </label>
+          <p class="field-hint">Stand (max. 5):</p>
+          <div id="stand-filters" class="stand-filters"></div>
+        </fieldset>
         <button type="submit">Zoeken</button>
       </form>
       <div id="facets"></div>
@@ -70,30 +126,50 @@
 
     <section>
       <p id="result-count"></p>
+      <div id="pager" class="pagination"></div>
       <table id="results">
         <thead>
           <tr>
-            <th>Naam</th>
-            <th>Geboren</th>
-            <th>Overleden</th>
+            <th data-sort="geslachtsnaam">Naam</th>
+            <th data-sort="geboortedatum">Geboren</th>
+            <th data-sort="overlijdensdatum">Overleden</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
+      <div id="pager-bottom" class="pagination"></div>
     </section>
 
-    <section id="detail" hidden>
-      <h2 id="detail-name"></h2>
-      <p id="detail-dates"></p>
-      <h3>Aliassen</h3>
-      <ul id="detail-aliases"></ul>
-      <h3>Aanstellingen</h3>
-      <ul id="detail-aanstellingen"></ul>
-      <button id="back-to-results" type="button">Terug naar resultaten</button>
+    <section id="detail" class="entity-detail person-detail" hidden>
+      <button id="back-to-results" type="button" class="back-button">Terug naar resultaten</button>
+      <h2 id="detail-name" class="entity-title"></h2>
+      <p id="detail-heerlijkheid" class="entity-subtitle" hidden></p>
+      <div id="detail-aliases-block" class="detail-block" hidden>
+        <h3>Ook bekend als</h3>
+        <ul id="detail-aliases"></ul>
+      </div>
+      <p id="detail-dates" class="life-summary"></p>
+      <div id="detail-opmerkingen-block" class="detail-block" hidden>
+        <h3>Opmerkingen</h3>
+        <div id="detail-opmerkingen" class="opmerkingen"></div>
+      </div>
+      <div id="detail-bronnen-block" class="detail-block" hidden>
+        <h3>Bronnen voor de persoonsgegevens</h3>
+        <div id="detail-bronnen" class="bronnen-list"></div>
+      </div>
+      <div id="detail-lokaal-section" class="detail-block" hidden>
+        <h3>Vertegenwoordigende functies</h3>
+        <ul id="detail-aanstellingen-lokaal" class="aanstelling-list"></ul>
+      </div>
+      <div id="detail-bovenlokaal-section" class="detail-block">
+        <h3>Functies in bovenlokale instellingen</h3>
+        <div id="detail-aanstellingen-bovenlokaal"></div>
+      </div>
     </section>
   </main>
 
   <script src="/static/common.js"></script>
+  <script src="/static/entity-detail.js"></script>
   <script src="/static/personen.js"></script>
 </body>
 </html>

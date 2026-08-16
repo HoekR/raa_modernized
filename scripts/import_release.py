@@ -41,6 +41,8 @@ TABLE_ORDER = [
     "alias",
     "bron_details",
     "aanstelling",
+    "functie_instelling_span",
+    "functie_attestation",
 ]
 
 
@@ -109,6 +111,34 @@ def purge_divperioden(extab: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]
 
 
 def import_tables(extab: dict[str, pd.DataFrame], engine, release_id: str) -> None:
+    from raa_life_dates.shadow import enrich_persoon_life_dates
+    from raa_entity_spans.spans import build_functie_attestation, build_functie_instelling_span
+    from raa_search_display.shadow import enrich_persoon_search_display
+
+    if "persoon" in extab and "aanstelling" in extab:
+        print("Enriching persoon with EDTF + shadow life-date columns...")
+        extab = dict(extab)
+        extab["persoon"] = enrich_persoon_life_dates(extab["persoon"], extab["aanstelling"])
+
+    if "persoon" in extab:
+        print("Enriching persoon with shadow search_display column...")
+        extab = dict(extab)
+        extab["persoon"] = enrich_persoon_search_display(
+            extab["persoon"],
+            extab.get("alias"),
+            extab.get("adellijke_titel"),
+            extab.get("academische_titel"),
+        )
+
+    if "aanstelling" in extab and "functie" in extab and "instelling" in extab:
+        print("Building functie × instelling span auxiliary tables...")
+        extab = dict(extab)
+        span = build_functie_instelling_span(extab["aanstelling"], extab["instelling"])
+        extab["functie_instelling_span"] = span
+        extab["functie_attestation"] = build_functie_attestation(
+            span, extab["aanstelling"], extab["instelling"]
+        )
+
     with engine.begin() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS raa"))
         for table in TABLE_ORDER:
@@ -133,6 +163,12 @@ def import_tables(extab: dict[str, pd.DataFrame], engine, release_id: str) -> No
         )
         conn.execute(
             text(
+                "CREATE INDEX IF NOT EXISTS idx_persoon_search_display "
+                "ON raa.persoon (search_display)"
+            )
+        )
+        conn.execute(
+            text(
                 "CREATE INDEX IF NOT EXISTS idx_persoon_geslachtsnaam "
                 "ON raa.persoon (geslachtsnaam)"
             )
@@ -141,6 +177,30 @@ def import_tables(extab: dict[str, pd.DataFrame], engine, release_id: str) -> No
             text(
                 "CREATE INDEX IF NOT EXISTS idx_aanstelling_persoon "
                 "ON raa.aanstelling (persoon_id)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_persoon_life_years "
+                "ON raa.persoon (life_start_year, life_end_year)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_persoon_geboorte_year "
+                "ON raa.persoon (geboorte_year)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_functie_span_functie "
+                "ON raa.functie_instelling_span (functie_id)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_functie_span_instelling "
+                "ON raa.functie_instelling_span (instelling_id)"
             )
         )
 

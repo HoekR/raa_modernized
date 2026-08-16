@@ -37,29 +37,36 @@
               <input type="text" id="functie-input" autocomplete="off" placeholder="zoek functie…" />
               <ul id="functie-suggest" class="suggest-list" hidden></ul>
               <ul id="functie-chips" class="chip-list"></ul>
+              <div class="match-mode">
+                <label><input type="radio" name="functie_match" value="any" checked /> of</label>
+                <label><input type="radio" name="functie_match" value="all" /> en</label>
+              </div>
             </div>
             <div class="filter-col suggest-field">
               <label for="instelling-input">Instelling</label>
               <input type="text" id="instelling-input" autocomplete="off" placeholder="zoek instelling…" />
               <ul id="instelling-suggest" class="suggest-list" hidden></ul>
               <ul id="instelling-chips" class="chip-list"></ul>
+              <div class="match-mode">
+                <label><input type="radio" name="instelling_match" value="any" checked /> of</label>
+                <label><input type="radio" name="instelling_match" value="all" /> en</label>
+              </div>
             </div>
           </div>
         </fieldset>
         <label>
-          Van (YYYY-MM-DD)
-          <input type="date" name="van" />
+          Van (jaar of YYYY-MM-DD)
+          <input type="text" name="van" placeholder="bijv. 1750" />
         </label>
         <label>
-          Tot (YYYY-MM-DD)
-          <input type="date" name="tot" />
+          Tot (jaar of YYYY-MM-DD)
+          <input type="text" name="tot" placeholder="bijv. 1770" />
         </label>
         <label>
-          Groeperen
+          Groeperen op
           <select name="group_by">
-            <option value="">Geen</option>
-            <option value="instelling">Instelling</option>
-            <option value="functie">Functie</option>
+            <option value="instelling">Instelling → functie</option>
+            <option value="functie">Functie → instelling</option>
           </select>
         </label>
         <fieldset class="filter-box">
@@ -86,6 +93,27 @@
             </div>
           </div>
         </fieldset>
+        <label>
+          Sorteer op
+          <select name="sort">
+            <option value="instelling">Instelling → functie</option>
+            <option value="functie">Functie → instelling</option>
+            <option value="van">Aanstellingsdatum (van)</option>
+            <option value="geslachtsnaam">Geslachtsnaam</option>
+            <option value="voornaam">Voornaam</option>
+            <option value="geboortedatum">Geboortedatum</option>
+            <option value="overlijdensdatum">Overlijdensdatum</option>
+          </select>
+        </label>
+        <fieldset class="filter-box">
+          <legend>Stand en adel</legend>
+          <label class="adel-option">
+            <input type="checkbox" name="adel" />
+            Alleen adel
+          </label>
+          <p class="field-hint">Stand (max. 5):</p>
+          <div id="stand-filters" class="stand-filters"></div>
+        </fieldset>
         <button type="submit">Zoeken</button>
       </form>
       <div id="facets"></div>
@@ -93,12 +121,9 @@
 
     <section>
       <p id="result-count"></p>
-      <table id="results">
-        <thead>
-          <tr id="results-header"></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div id="pager" class="pagination"></div>
+      <div id="results-nested" class="nested-results"></div>
+      <div id="pager-bottom" class="pagination"></div>
     </section>
   </main>
 

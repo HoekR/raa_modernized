@@ -31,27 +31,32 @@
         </label>
         <button type="submit">Zoeken</button>
       </form>
+      <div class="az-browse-block">
+        <p class="field-hint">Of blader A–Z (periode-scoped):</p>
+        <div id="az-browser" class="az-browser"></div>
+      </div>
     </section>
 
     <section>
       <p id="result-count"></p>
+      <div id="pager" class="pagination"></div>
       <table id="results">
         <thead>
           <tr><th>Naam</th><th>Aanstellingen</th></tr>
         </thead>
         <tbody></tbody>
       </table>
+      <div id="pager-bottom" class="pagination"></div>
     </section>
 
-    <section id="detail" hidden>
-      <h2 id="detail-name"></h2>
-      <p id="detail-count"></p>
-      <div id="detail-toelichting"></div>
-      <button id="back-to-results" type="button">Terug naar resultaten</button>
+    <section id="detail" class="entity-detail" hidden>
+      <button id="back-to-results" type="button" class="back-button">Terug naar resultaten</button>
+      <div id="detail-body"></div>
     </section>
   </main>
 
   <script src="/static/common.js"></script>
+  <script src="/static/entity-detail.js"></script>
   <script src="/static/instellingen.js"></script>
 </body>
 </html>

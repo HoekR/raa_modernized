@@ -65,9 +65,28 @@ Strategic choices, ordered by topic. Status: **decided** | **pilot** | **deferre
 | D-31 | Filter sets per context in `search_contexts.yaml` | Different RQs need different fields (zoekhulp: person vs institution perspective) | **decided** |
 | D-32 | Typeahead suggest for high-cardinality fields | functie, instelling, geo — alphabetical, period-scoped | **decided** |
 | D-33 | **Vertegenwoordiging** = provincie / regio / lokaal (3 columns) | Legacy `personen.pt` / `aanstellingen.pt`; see LEGACY-UX | **decided** (slice 1) |
-| D-34 | Aanstellingen **nested grouping** (instelling → functie) | Legacy default result shape; API has `group_by`; UI still flat | **open** |
-| D-35 | Person detail: bovenlokaal / namens split | Legacy `persoon.pt` + `vertegenwoordigend` flag | **open** |
-| D-36 | Functie/instelling **en/of** multi-select | Legacy `form.py`; pilot = single typeahead only | **open** |
+| D-34 | Aanstellingen **nested grouping** (instelling → functie) | Legacy default result shape; nested UI with instelling/functie toggle | **decided** (2026-07-13) |
+| D-35 | Person detail: bovenlokaal / namens split | Legacy `persoon.pt` + `vertegenwoordigend` flag | **decided** (2026-07-13) |
+| D-36 | Functie/instelling **en/of** multi-select | Legacy `form.py`; chip pickers + `functie_match` / `instelling_match` | **decided** (2026-07-13) |
+| D-37 | **Display name** when `geslachtsnaam` empty | 51 persons voornaam-only; avoid legacy `, Pieter` listing; `coalesce(geslachtsnaam, voornaam)` sort | **decided** (2026-07-13) |
+| D-38 | **Shadow life dates** at import | ~11.5k persons lack birth date but have aanstellingen; port `hypothetical_life` from `republic_clean/.../datamangler.py` | **decided** (2026-07-13) |
+| D-39 | **EDTF Level 1** life-date search (personen) | Partial/uncertain dates + interval overlap; [LOC EDTF](https://www.loc.gov/standards/datetime/); aanstellingen stay ISO in v1 | **decided** (2026-07-13) |
+
+### Enhancements above legacy (modern-only)
+
+| ID | Decision | Rationale | Status |
+|----|----------|-----------|--------|
+| D-38a | Shadow dates **included in search by default** | Better recall for life-date RQs; radio **“zoek exacte datums”** switches to recorded bounds only | **decided** (2026-07-13) |
+| D-38b | Shadow offsets **34 yr birth / 22 yr death** (global v1) | Matches `datamangler.py` default; period- or role-specific offsets deferred | **decided** (2026-07-13) |
+| D-39a | EDTF derived at **import** in `raa_modernized` | `geboorte_edtf` / `overlijden_edtf` + `life_*_year` bounds; extab unchanged | **decided** (2026-07-13) |
+| D-55 | **Entity span** auxiliary tables at import | `functie_instelling_span` (primary) + `functie_attestation` (rollup); built from dated `aanstelling` rows; not in extab | **decided** (2026-07-13) |
+| D-56 | Span labels = **database witnesses**, not office invention/abolition | Earliest/latest dated aanstelling only; same functienaam may appear in parallel or sequential institutional contexts | **decided** (2026-07-13) |
+| D-57 | **No inferred ambtsketen** across contexts | Do not merge successor `instelling_id`s or fill gaps; UI shows separate context rows + explicit caveat; link to institutionele toelichting / zoekhulp | **decided** (2026-07-13) |
+| D-59 | **Shadow `search_display`** on `persoon` | Legacy `searchable` is surname-skewed; identity search needs display naam + titels + alias + heerlijkheid + opmerkingen in one indexed blob (B2f) | **decided** (2026-07-14) |
+
+**D-56 note (institutional view paradox):** RAA was built and edited from an **institutional perspective**, yet the schema stores flat `instelling` rows without lineage between regime-specific successors. Discontinuities in span tables may therefore reflect **modelling/snapshot boundaries** (re-keying after 1795, separate edit tracks) as much as missing data — strange but expected until an explicit succession model exists.
+
+**Open TODO (deferred):** tune shadow offsets per historical period (ME / Republiek / 19e eeuw) or office type (e.g. gedeputeerde −44 yr) — see Milestone B2 in [PLAN.md](../PLAN.md).
 
 ### Data import & ops
 
@@ -85,6 +104,9 @@ Strategic choices, ordered by topic. Status: **decided** | **pilot** | **deferre
 | D-50 | Phase 5: Postgres **editorial amendments** overlay | Edits without re-running `raa_convert`; merge on new releases | **deferred** |
 | D-51 | v1 **read-only** public site | Auth + TinyMCE-style editing not in pilot | **deferred** |
 | D-52 | Phase 4 deployment (managed Postgres + API + static) | Not started | **deferred** |
+| D-53 | **Self-contained local dev** (`scripts/dev.sh`) | One entry point: compose Postgres + import-if-empty + API; replace ad-hoc `docker run` / split cwd steps once stack stabilizes | **decided** (2026-07-13) |
+| D-54 | **Production API process:** Gunicorn + Uvicorn workers | FastAPI is ASGI; dev keeps `uvicorn --reload`; `./scripts/dev.sh --prod` or compose uses `gunicorn -k uvicorn.workers.UvicornWorker` | **pilot** (2026-07-13) |
+| D-58 | **Legacy ID concordance** (Huygens → modern `raa.*.id`) | User has partial concordance; defer to backlog (B3f): auxiliary table at import + redirect/lookup; personen first | **backlog** (2026-07-14) |
 
 ### Explicit non-goals (v1)
 
@@ -209,6 +231,213 @@ In `raa_convert`, Fries/Republic data was **edited on a separate track** from th
 
 ---
 
+### 2026-07-13 — Milestone B2b: shadow life dates + EDTF search API
+
+**Done**
+
+- Package `raa_life_dates/`: `edtf.py` (Level 1 derive + parse), `shadow.py` (`enrich_persoon_life_dates`, offsets 34/22).
+- `scripts/shadow_life.py` CLI; `import_release.py` enriches `persoon` before load.
+- New `persoon` columns: `geboorte_edtf`, `overlijden_edtf`, `geboorte_year`, `overlijden_year`, `life_start_year`, `life_end_year`, `life_*_edtf`, `life_*_source`.
+- API: `include_shadow_dates` on `SearchRequest` (default `true`); `filters.geboorte` / `filters.overlijden` accept EDTF intervals; `raa_api/edtf_bounds.py`.
+- Indexes: `life_start_year`/`life_end_year`, `geboorte_year`.
+
+**Verified** (extab.pkl, no DB)
+
+- Shadow starts: 11,271; shadow ends: 8,860; life span on ~21.8k persons.
+- `uv run pytest tests/test_life_dates.py` (6 passed).
+- `uv run pytest tests/` in `web/api` (8 passed).
+
+**Next**
+
+- B2c UI: EDTF inputs + **“zoek exacte datums”** radio.
+- Re-import Postgres when DB available.
+
+---
+
+### 2026-07-17 — B3d + B3e: aanstellingsdatum + A–Z browse
+
+**Done**
+
+- **B3d:** personen search filters `van`/`tot` → EXISTS appointment overlapping range; year-only (`1750`) or `YYYY-MM-DD`. Same year normalization on aanstellingen date filters.
+- **B3e:** `GET /api/browse/{instellingen|functies}/az?letter=&period=` with letter counts; A–Z strip UI on instellingen + functies pages.
+- Tests: year normalize + overlap clause; API smoke (Republiek `S` → 8 instellingen; personen 1750–1770 → 2841).
+
+**Still open for B3 close gate**
+
+- Human fill of Legacy/Verdict in [VALIDATION_RQS.md](VALIDATION_RQS.md).
+- **B3f** ID concordance remains backlog (D-58).
+
+---
+
+### 2026-07-14 — B2f: shadow `search_display` (D-59)
+
+**Done**
+
+- Package `raa_search_display/`: shared name formatting + `enrich_persoon_search_display` (display naam, titles, aliases, heerlijkheid, opmerkingen, legacy `searchable`).
+- Import writes `persoon.search_display` + index; search prefers that column (legacy per-field fallback if null).
+- Backfill: `scripts/backfill_search_display.py` (ran on local pilot — 21k persons).
+- Unblocks identity queries such as `Tjaerd baron van Aylva` (title token in opmerkingen).
+
+**Verified**
+
+- `uv run pytest tests/test_search_display.py`
+- `uv run pytest tests/` in `web/api`
+
+---
+
+### 2026-07-14 — Legacy ID concordance → backlog (D-58)
+
+**Context**
+
+User has a concordance mapping legacy Huygens entity numbers to modern import IDs where applicable. **Legacy example IDs are not valid in the pilot** — primary keys come from `extab.pkl` (`/app/personen/6448` on Huygens ≠ `?person=6448` locally).
+
+**Decision**
+
+Defer to **B3f** backlog: auxiliary `legacy_id_map` table at import, personen first; optional redirect route. No implementation in current validation sprint.
+
+**Known mapping (anchor for validation)**
+
+| Entity | Legacy (Huygens) | Modern (pilot) | Naam |
+|--------|------------------|----------------|------|
+| persoon | 6448 | 21009 | Tjaerd baron van Aylva |
+
+Pilot check: `http://127.0.0.1:8000/static/index.html?person=21009`
+
+---
+
+
+**Done**
+
+- Pagination: vorige/volgende + range label on personen, aanstellingen, instellingen, functies (`PAGE_SIZE` 100).
+- Personen: clickable sort on naam / geboorte / overlijden columns.
+- Aanstellingen: sort dropdown (instelling, functie, van, life dates).
+- Stand + adel: `filters.stand_id`, `filters.adel`; `GET /api/stands`; checkbox UI on personen + aanstellingen.
+
+**Verified**
+
+- `uv run pytest tests/` in `web/api`
+
+---
+
+
+**Done**
+
+- [docs/VALIDATION_RQS.md](VALIDATION_RQS.md): 16 RQs (personen / aanstellingen / instellingen / functies) + 5 cross-cutting checks, pass criteria, outcomes → action table.
+- `scripts/validation_rq_smoke.py`: pilot baseline counts for matrix seed rows.
+- PLAN.md: B3 section + close gate.
+
+**Next**
+
+- Fill legacy counts and verdicts by running matrix against Huygens UI.
+- Turn failures into B3 parity slices.
+
+---
+
+
+**Done (B2c)**
+
+- Personen form: EDTF interval inputs (`geboorte`, `overlijden`); radio **zoek exacte datums** → `include_shadow_dates: false`.
+- Listing + detail: provenance badges `~` (uncertain EDTF) and *geschat* (shadow life years).
+
+**Done (B2e)**
+
+- Package `raa_entity_spans/`: `build_functie_instelling_span`, `build_functie_attestation` at import.
+- Tables `raa.functie_instelling_span`, `raa.functie_attestation`; indexes on `functie_id` / `instelling_id`.
+- Functie / instelling detail profiles: corpus first/last witnesses, institutional context list with spans, D-57 caveat + zoekhulp link.
+
+**Verified**
+
+- `uv run pytest tests/test_entity_spans.py`
+- `uv run pytest tests/` in `web/api`
+
+**Note**
+
+- Re-import Postgres (`uv run python scripts/import_release.py --skip-validate`) to create span tables.
+
+---
+
+### 2026-07-13 — Milestone B2a + B2d: display names + person/entity detail
+
+**Done**
+
+- `web/api/raa_api/display.py`: legacy `naam()` / listing name, life summary, heerlijkheid, opmerkingen HTML, shared `entity_profile()`.
+- Person detail API: `display_naam`, `life_summary`, `heerlijkheid_line`, `opmerkingen_html`, `bronnen` (bron_details ⋈ bron), appointment `opmerkingen`; title joins on search + detail.
+- Personen UI (`index.html`, `personen.js`): full detail sections; `listingPersonName` in results; `?functie_id=` deep link seeds functie chip.
+- Functie / instelling detail: structured `profile` (stats, actions, related links, toelichting); `entity-detail.js` renderer + CSS.
+- Tests: `web/api/tests/test_display.py` (6 cases).
+
+**Verified**
+
+- `uv run pytest tests/` in `web/api` (13 passed).
+
+**Next**
+
+- B2c UI: EDTF interval inputs + **“zoek exacte datums”** radio + provenance badges.
+
+---
+
+
+**Done**
+
+- `scripts/dev.sh`: `docker compose` (Postgres) + import-if-empty + `uvicorn` from one command.
+- Detects legacy `raa_pg` container name conflict and prints migration hint.
+
+**Target** (when stack stabilizes)
+
+- README documents `./scripts/dev.sh` as the only local path; retire manual multi-step / wrong-cwd workflows.
+- **D-54:** API service in compose runs **Gunicorn** with `uvicorn.workers.UvicornWorker` (no `--reload`); dev.sh keeps uvicorn for iteration.
+
+---
+
+### 2026-07-13 — Names, shadow life dates, EDTF (planning)
+
+**Context**
+
+Planning session on three enhancements above the legacy Huygens app: persons without `geslachtsnaam`, life-date range search with uncertain/partial dates, and shadow life intervals inferred from aanstellingen (prior art: `~/develop/republic_clean/republic/data/datamangler.py` → `hypothetical_life()`).
+
+**Decided** (D-37, D-38, D-39, D-38a/b, D-39a)
+
+| Topic | Decision |
+|-------|----------|
+| No surname (51 rows) | Shared `display_name`: listing uses `voornaam` when `geslachtsnaam` empty; sort `coalesce(geslachtsnaam, voornaam)`; optional detail hint *alleen voornaam bekend* |
+| Shadow life | Import-time `scripts/shadow_life.py`: `life_start_year`, `life_end_year`, `life_*_edtf`, `life_*_source` (`recorded` \| `shadow` \| `partial`); never overwrite source fields |
+| Offsets v1 | Birth: `min(van).year − 34` when no geboorte; death: recorded or `max(tot).year + 22` when missing/invalid |
+| Search default | Shadow **on**; UI radio **“zoek exacte datums”** → recorded bounds only |
+| EDTF | Level 1 subset for personen filters (`1720/1750`, `../1720`, `1720~`, …); overlap against life interval; aanstellingen keep ISO date inputs in v1 |
+| Storage | Derive EDTF + shadow columns in `import_release.py` / `shadow_life.py` (not in `raa_convert` extab) |
+
+**Deferred / TODO**
+
+- Period-specific or role-specific shadow offsets (34/22 global for now).
+- Full personen filter set (alias, titels as separate fields).
+- EDTF on aanstellingen zittingstermijn.
+
+**Build track:** Milestone B2 in [PLAN.md](../PLAN.md) (B2a display name → B2b import + API → B2c UI).
+
+---
+
+### 2026-07-13 — Legacy UX parity slice 2 (en/of, grouping, person detail)
+
+**Done**
+
+- API: `functie_match` / `instelling_match` (`any`|`all`) on search requests; AND mode uses per-id `EXISTS` subqueries (legacy `query.py` semantics).
+- Person detail: split `aanstellingen_lokaal` / `aanstellingen_bovenlokaal` with provincie/regio/lokaal/stand **namens** line; deep links to aanstellingen search.
+- Aanstellingen UI: nested instelling → functie (default) or functie → instelling; chip multi-select + en/of on personen and aanstellingen.
+- Instelling detail: functie list with links to pre-filtered aanstellingen search.
+- UI page size raised to 100 (`PAGE_SIZE`).
+
+**Verified**
+
+- `uv run pytest tests/test_schemas.py` in `web/api` (4 passed).
+
+**Deferred**
+
+- Full personen filter set (alias, titels, date ranges as separate fields).
+- Sort column toggles in UI.
+- Sanitized `toelichting` HTML.
+
+---
+
 ### 2026-07-12 — Four search contexts (API + static UI)
 
 **Done**
@@ -274,19 +503,26 @@ In `raa_convert`, Fries/Republic data was **edited on a separate track** from th
 
 | Legacy capability | Modern status | Log / decision |
 |-------------------|---------------|----------------|
-| Personen zoeken | Partial | D-14, D-30; naam via single `q` |
-| Aanstellingen zoeken | Partial | D-34; flat UI |
-| Instellingen / functies browse | Basic | Four contexts shipped |
+| Personen zoeken | Yes | D-14, D-30, D-36, D-59; naam via single `q` → `search_display` |
+| Aanstellingen zoeken | Yes (barebones) | D-34, D-36; nested UI + en/of |
+| Instellingen / functies browse | Yes | D-34; A–Z browse **B3e**; instelling detail → functie links |
 | Period-scoped search | Yes | D-20, D-21 (modern addition) |
 | Vertegenwoordiging | Yes | D-33; 2026-07-12 entry |
-| Stand / adel filters | API facets only | D-36 |
-| en/of functie/instelling | No | D-36 |
+| en/of functie/instelling | Yes | D-36; 2026-07-13 |
 | Wildcard name search | Yes | D-13 |
-| Person detail bovenlokaal | No | D-35 |
-| Institutionele toelichting | Detail API; HTML unsanitized | D-51 |
+| Person detail bovenlokaal | Yes | D-35; 2026-07-13 |
+| Person detail bronnen / opmerkingen / titels | Yes | B2d; 2026-07-13 |
+| Functie / instelling entity profile | basic list | B2d; stats + related links; 2026-07-13 |
+| Institutionele toelichting | Detail API; HTML unsanitized | D-51; B2d profile section |
+| Stand / adel filters | Yes | D-36; **UI B3c** |
 | Editorial toelichting edit | No | D-50 |
-| Pagination 100/page | API `size`≤100; UI uses 20 | open |
-| Sort toggles | Partial `sort` param | open |
+| Pagination 100/page | vorige/volgende + 100/page | B3a |
+| Sort toggles | Yes | B3b |
+| Display name (no geslachtsnaam) | — (legacy awkward comma) | D-37; **B2a shipped** |
+| Shadow life-date search | — | D-38, D-38a; **API + UI shipped** (B2b, B2c) |
+| EDTF life-date filters | — | D-39; **API + UI shipped** (B2b, B2c) |
+| Functie institutional spans | — | D-55–D-57; **shipped** B2e |
+| Shadow `search_display` | — | D-59; **shipped** B2f |
 
 ---
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -10,10 +10,12 @@ from sqlalchemy.orm import Session
 from raa_api.db import get_db
 from raa_api.schemas import SearchRequest
 from raa_api.search import (
+    browse_az,
     get_functie_detail,
     get_instelling_detail,
     get_persoon_detail,
     list_periods,
+    list_stands,
     search_aanstellingen,
     search_functies,
     search_instellingen,
@@ -45,6 +47,11 @@ def health():
 @app.get("/api/periods")
 def api_periods(context: str = "personen", db: Session = Depends(get_db)):
     return list_periods(db, context)
+
+
+@app.get("/api/stands")
+def api_stands(db: Session = Depends(get_db)):
+    return list_stands(db)
 
 
 @app.post("/api/search/personen")
@@ -100,3 +107,29 @@ def api_suggest(
     db: Session = Depends(get_db),
 ):
     return suggest_field(db, field, q, period, period_mode)
+
+
+@app.get("/api/browse/{entity}/az")
+def api_browse_az(
+    entity: str,
+    letter: str | None = None,
+    period: str | None = None,
+    period_mode: str = "scoped",
+    from_: int = Query(0, alias="from", ge=0),
+    size: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    if entity not in {"instellingen", "functies"}:
+        raise HTTPException(status_code=404, detail="Onbekende browse-entiteit")
+    try:
+        return browse_az(
+            db,
+            entity,
+            letter=letter,
+            period=period,
+            period_mode=period_mode,
+            from_=from_,
+            size=size,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

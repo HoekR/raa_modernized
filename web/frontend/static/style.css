@@ -70,6 +70,214 @@ nav a.active {
   margin: 1rem 0;
 }
 
+.entity-detail {
+  margin-top: 1.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ddd;
+}
+
+.back-button {
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.entity-header h2,
+.entity-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.entity-subtitle {
+  margin: 0 0 1rem;
+  font-style: italic;
+  color: #444;
+}
+
+.entity-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0 0 1rem;
+  max-width: 24rem;
+}
+
+.entity-stats dt {
+  font-weight: bold;
+  margin: 0;
+}
+
+.entity-stats dd {
+  margin: 0;
+}
+
+.entity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.entity-actions a {
+  color: #1a4a7a;
+}
+
+.entity-section,
+.entity-related,
+.detail-block {
+  margin: 1.25rem 0;
+}
+
+.entity-section h3,
+.entity-related h3,
+.detail-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.entity-related-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.life-summary {
+  margin: 0.75rem 0 1rem;
+}
+
+.opmerkingen {
+  margin: 0.5rem 0 0;
+  line-height: 1.45;
+}
+
+.bronnen-list .bron-item {
+  margin: 0.35rem 0;
+}
+
+.person-detail .aanstelling-block a {
+  color: #1a4a7a;
+}
+
+.provenance {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: #666;
+}
+
+.provenance.approx {
+  font-style: normal;
+  font-weight: bold;
+}
+
+.provenance.geschat {
+  font-size: 0.75rem;
+}
+
+.date-mode {
+  margin-top: 0.5rem;
+}
+
+.life-dates code {
+  font-size: 0.85rem;
+}
+
+.span-caveat {
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.45;
+}
+
+.span-caveat a {
+  color: #1a4a7a;
+}
+
+.entity-stats dd a {
+  color: #1a4a7a;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.page-info {
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.page-button {
+  cursor: pointer;
+}
+
+.page-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  background: #f0ebe3;
+}
+
+th.sort-active {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.stand-filters {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.25rem 1rem;
+  margin-top: 0.35rem;
+}
+
+.az-browse-block {
+  margin-top: 1rem;
+}
+
+.az-browser {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.az-letter {
+  min-width: 1.75rem;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.az-letter:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.az-letter.active {
+  background: #3d4f5f;
+  color: #fff;
+  border-color: #3d4f5f;
+}
+
+.stand-option,
+.adel-option {
+  display: block;
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+}
+
+@media (max-width: 720px) {
+  .stand-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -173,6 +381,51 @@ tbody tr:hover {
   padding: 0 0.15rem;
   font-size: 1rem;
   line-height: 1;
+}
+
+.match-mode {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.match-mode label {
+  margin-right: 0.75rem;
+}
+
+.nested-results .group-outer {
+  margin-bottom: 1.5rem;
+}
+
+.nested-results .group-outer h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.nested-results .group-inner {
+  margin: 0 0 0.75rem 1rem;
+}
+
+.nested-results .group-inner h4 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: normal;
+  font-style: italic;
+}
+
+.nested-results .person-rows {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.aanstelling-block {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #eee;
+}
+
+.aanstelling-list {
+  margin: 0;
+  padding-left: 1.25rem;
 }
 
 @media (max-width: 720px) {
