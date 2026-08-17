@@ -1,0 +1,24 @@
+# Copy to data_manifest.local.toml on SURF. Adjust base_dir to your mounted volume.
+
+[environments.researchcloud]
+base_dir = "/data"
+
+[tiers.hot]
+root = "/data"
+mount_check = "/data"
+
+[tiers.warm]
+root = "/data"
+mount_check = "/data"
+
+[tiers.scratch]
+root = "/data/scratch"
+mount_check = "/data/scratch"
+
+# extab at /data/raa_convert/extab.pkl when path below is relative to hot tier
+[datasets.raa_extab]
+tier = "hot"
+path = "raa_convert/extab.pkl"
+phase = "frozen"
+description = "Consolidated RAA export on SURF volume"
+parent = ""

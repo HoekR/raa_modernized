@@ -1,90 +1,118 @@
-# Agent instructions — DH data project
+# Agent instructions — RAA Modernized
 
-Read this file, `docs/DATA.md`, `PLAN.md`, and `docs/MIGRATION_LOG.md` (for migration context) before writing pipeline or web code.
+Modern web port of the **Huygens RAA** (Repertorium Aanstellingen Amsterdam) corpus: `extab.pkl` → Postgres → FastAPI search → SvelteKit UI, plus a separate **redactie** app for editorial amendments.
+
+Read **`PLAN.md`**, **`docs/MIGRATION_LOG.md`**, and **`docs/DATA.md`** before pipeline or web work. Legacy UX reference: **`LEGACY-UX.md`**.
+
+## What lives where
+
+| Path | Role |
+|------|------|
+| `data_manifest.toml` | Dataset registry; canonical input `raa_extab` |
+| `scripts/import_release.py` | Prepare extab → load `raa_staging` → merge into `raa.*` |
+| `scripts/merge_release.py` | Standalone staging merge (editorial conflicts) |
+| `scripts/dev.sh` | Local stack: Postgres + import-if-empty + API `:8000` |
+| `raa_life_dates/` | EDTF, shadow life years, plausibility validation |
+| `raa_search_display/` | `search_display`, listing names |
+| `raa_entity_spans/` | Institution/function span tables |
+| `web/api/` | FastAPI (`raa_api`) — search, detail, editorial API |
+| `web/ui/` | Public SvelteKit UI `:5173` |
+| `web/admin/` | Editorial SvelteKit app `:5174` |
+| `web/shared/` | Shared fetch helpers (`@raa/shared`) |
+| `config.local.toml` | DB URL, `[editorial]` (gitignored; copy from `.example`) |
+
+## Milestone status (see `PLAN.md` for detail)
+
+| Track | State |
+|-------|--------|
+| **B** | Postgres search pilot — shipped (B2–B4 largely done) |
+| **C** | SvelteKit UI — in progress (C1–C3 shipped; static pilot kept until beta) |
+| **D** | Deploy read-only pilot — planned |
+| **E** | Editorial layer — **E0–E5 shipped** (amendments, grid, Excel import) |
 
 ## Data paths (strict)
 
-- **Never** hardcode absolute paths (`/Users/...`, `/Volumes/...`) in Python scripts.
-- **Always** register datasets in `data_manifest.toml` first, then use:
-  ```python
-  from data_io import resolve, load, save_semi_structured, save_parquet
-  ```
-- **Always** run after manifest or tier changes:
-  ```bash
-  uv run python -m data_io.check
-  ```
+- **Never** hardcode absolute paths in Python (`/Users/...`, `/Volumes/...`).
+- Register datasets in `data_manifest.toml`, then:
 
-## Output writes (strict)
-
-- Phase 1–2 (explore / semi): `save_semi_structured(..., logical_name="...", script=__file__)`
-- Phase 3 (frozen): `save_parquet(df, logical_name="...", script=__file__)`
-- Never write pipeline outputs without sidecar provenance (`data_io` does this automatically).
-
-## Legacy / orphan files — `llm_archivist` (optional)
-
-Available when the project was bootstrapped with `--with-archivist` (or `llm_archivist/` was added manually). For **existing** files without `data_io` sidecars (inbox dumps, old exports):
-
-```bash
-# Fast — no Ollama (columns, coverage, row counts)
-uv run archive-inventory /path/to/folder
-
-# LLM — rich description (requires Ollama at localhost:11434)
-uv run archive-scan /path/to/folder --model qwen2.5-coder:latest
+```python
+from data_io import resolve, load, save_semi_structured, save_parquet
 ```
 
-- Profiles `.parquet`, `.csv`, `.xlsx`, `.ipynb` → `filename.meta.toml`
-- Use on `output/_inbox/` or migrated legacy data — **not** on `data_io` outputs
-- After inventory, read **`INVENTORY.md`** at the scan root; add canonical files to `data_manifest.toml`
+- After manifest changes: `uv run python -m data_io.check`
+- Pipeline outputs → scratch tier via `save_*` (provenance sidecars automatic).
+- Do not drop archival metadata fields when transforming extab-derived records.
 
-| Tool | When | Sidecar | LLM? |
-|------|------|---------|------|
-| `data_io.save_*` | New pipeline outputs | `.meta.toml` / `.parquet.meta.json` | No |
-| `archive-inventory` | Fast orphan triage | `.meta.toml` (`inventory_mode = "fast"`) | No |
-| `archive-scan` | Rich archival context | `.meta.toml` | Yes |
+Primary corpus input: **`raa_extab`** (logical name for `extab.pkl`).
 
-## Before adding a dataset
+## Import and database
 
-1. Add `[datasets.<logical_name>]` to `data_manifest.toml` (tier, path, phase, description, parent).
-2. Run `data_io.check`.
-3. Only then reference `logical_name` in code.
+```bash
+./scripts/dev.sh              # Postgres + import if empty + API
+./scripts/dev.sh --import     # re-import (stop running dev.sh first)
+uv run python scripts/import_release.py
+```
 
-## Archival integrity
+- Import loads **`raa_staging`**, then merges into **`raa.*`**; **`editorial.*`** is preserved.
+- Re-import may create rows in **`editorial.conflicts`** when base data drifts from active amendments.
+- Life-date pipeline, shadow enrichment, garbage-year sanitization: [docs/LIFE_DATES.md](docs/LIFE_DATES.md).
 
-- Do not drop metadata fields from domain records when transforming.
-- Do not mutate canonical reference files in place; write versioned outputs.
-- Promote JSONL → Parquet only when schema is stable for one review cycle.
+## Web layer
+
+| App | URL | Purpose |
+|-----|-----|---------|
+| API | http://localhost:8000 | Search, detail, editorial endpoints |
+| Public UI | http://localhost:5173 | `cd web/ui && npm run dev` |
+| Redactie | http://localhost:5174 | `cd web/admin && npm run dev` |
+
+**Config** (repo root `config.local.toml`):
+
+```toml
+[database]
+url = "postgresql+psycopg://..."
+
+[editorial]
+enabled = true
+api_key = "..."
+editor_id = "..."
+cors_origins = ["http://localhost:5174", "http://127.0.0.1:5174"]
+```
+
+**Editorial:** [docs/EDITORIAL.md](docs/EDITORIAL.md) · demo [docs/EDITORIAL_DEMO.md](docs/EDITORIAL_DEMO.md) · SURF host [docs/SURF_DEMO.md](docs/SURF_DEMO.md)
+
+- Amendments in `editorial.amendments`; effective = amendment ?? base.
+- Admin routes: instelling toelichting, persoon/aanstelling fields, werklijst grid, conflicts.
+- Persoon date edits use exact **j / m / d** parts; save triggers `refresh_persoon_derived`.
 
 ## Session workflow
 
-1. Read `PLAN.md` for current phase and outputs.
-2. Update `PLAN.md` data-path table when manifest datasets change.
-3. (Recommended) Run `uv run python -m data_io.check` to view the manifest-backed data registry state before you start new work.
-4. Smoke test: `uv run python -c "from data_io import resolve; print(resolve('...'))"`
+1. Read `PLAN.md` — current milestone and open todos.
+2. Log decisions in `docs/MIGRATION_LOG.md` when architecture or behaviour changes.
+3. `uv run python -m data_io.check` before new pipeline work.
+4. Web smoke: `./scripts/dev.sh` + public UI + (if editorial) admin login.
 
-## Optional: data_io MCP (Cursor)
+## Tests
 
-When the `data-io-mcp` add-on is applied, prefer MCP tools (`check_manifest`, `list_datasets`, `preview_dataset`) over raw filesystem reads. See `docs/addons/data-io-mcp/README.md`.
+```bash
+make check          # unit tests, no DB
+make check-db       # + validation RQ baselines (Postgres up)
+cd web/api && uv run pytest tests/ -q
+```
 
-## Common mistakes (avoid)
+Editorial subset: `uv run pytest tests/test_editorial*.py -q`
+
+## Common mistakes
 
 | Wrong | Right |
-|-------|-------|
-| `pd.read_parquet("/Volumes/...")` | `load("resolutions_flat")` |
-| `open("data/out.jsonl", "w")` | `save_semi_structured(rows, logical_name="...")` |
-| `archive-scan` on `data_io` outputs | Only scan legacy/orphan folders |
-| New path in code only | New `[datasets.*]` entry + `data_io.check` |
+|-------|--------|
+| `pd.read_parquet("/Volumes/.../extab...")` | `load("raa_extab")` or manifest `resolve("raa_extab")` |
+| Edit `extab.pkl` or Postgres `raa.*` by hand for corrections | Editorial amendments via `web/admin` or API |
+| Re-import while `dev.sh` is running | Stop dev.sh (Ctrl+C), then `--import` |
+| `pd.to_datetime` for pre-1678 calendar dates | `pd.Period(..., freq="D")` — see project rules |
+| Hardcode editorial API key in source | `[editorial].api_key` in `config.local.toml` |
 
-## Wisdom and add-ons
+## Cursor rules
 
-- **Wisdom** (cross-project lessons): `docs/wisdom/` if bootstrapped with `--with-wisdom`, else `~/develop/dighum_template/wisdom/INDEX.md`
-- **Add-ons** (domain overlays): see `docs/addons/APPLIED.md` and `.cursor/rules/*` beyond `project-standards.mdc`
-- Apply later: `~/develop/dighum_template/scripts/apply_addon.sh <this-repo> <name>`
+Also loaded: `.cursorrules`, `.cursor/rules/project-standards.mdc`.
 
-## Web layer (`web/`)
-
-- API: FastAPI in `web/api/`
-- UI: SvelteKit in `web/ui/` (static legacy in `web/frontend/static/`)
-- Config: `config.local.toml` (copy from `.example`)
-- Import: `uv run python scripts/import_release.py` — or `./scripts/dev.sh --import` (stop running dev stack first; see [docs/LIFE_DATES.md](docs/LIFE_DATES.md) §8)
-- Life dates & search semantics: [docs/LIFE_DATES.md](docs/LIFE_DATES.md)
-- Editorial / redactie (Milestone E): [docs/EDITORIAL.md](docs/EDITORIAL.md) — demo checklist [docs/EDITORIAL_DEMO.md](docs/EDITORIAL_DEMO.md); `web/admin/` on `:5174`; `[editorial]` in root `config.local.toml`
+Bootstrapped from `dighum_web_template`; RAA-specific decisions live in this repo's `PLAN.md` and `MIGRATION_LOG.md`, not the template wisdom index.

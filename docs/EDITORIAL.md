@@ -1,6 +1,7 @@
 # Editorial layer (Milestone E)
 
-Demo walkthrough for co-workers → [EDITORIAL_DEMO.md](EDITORIAL_DEMO.md).
+Demo walkthrough for co-workers → [EDITORIAL_DEMO.md](EDITORIAL_DEMO.md).  
+Shared host on SURF → [SURF_DEMO.md](SURF_DEMO.md).
 
 Redactie-app voor corpuscorrecties **zonder** `raa_convert` opnieuw te draaien. Wijzigingen worden opgeslagen als **amendments** in Postgres (`editorial.*`).
 

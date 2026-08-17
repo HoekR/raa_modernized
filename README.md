@@ -87,3 +87,7 @@ Search store: **PostgreSQL** (Elasticsearch deferred). See `PLAN.md` and `docs/M
 ## Cursor / agents
 
 Read **`AGENTS.md`** first. Rules also load from `.cursor/rules/project-standards.mdc` and `.cursorrules`.
+
+## SURF shared demo
+
+Team pilot on SURF Research Cloud: [docs/SURF_DEMO.md](docs/SURF_DEMO.md) — `./scripts/surf_stack.sh up` (nginx on :80).

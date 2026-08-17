@@ -15,6 +15,12 @@ Three ways to edit: **single record**, **browser spreadsheet**, **Excel template
 
 ---
 
+## Without a demo machine
+
+- **SURF VM + Docker:** [SURF_DEMO.md](SURF_DEMO.md) — one host, team uses browser URLs
+- **Recording:** screen-share async walkthrough (see script below)
+- **They run locally:** clone + this doc + optional Postgres dump (ask maintainer)
+
 ## Before the meeting
 
 - [ ] Postgres running with data loaded (see [Start stack](#start-stack))

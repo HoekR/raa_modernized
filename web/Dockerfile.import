@@ -1,0 +1,10 @@
+# One-shot import container (SURF). Build context: repo root.
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+
+WORKDIR /app
+COPY . .
+
+RUN uv sync && uv sync --project web/api
+
+ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["uv", "run", "python", "scripts/import_release.py"]

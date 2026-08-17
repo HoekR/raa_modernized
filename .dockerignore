@@ -1,0 +1,16 @@
+.git
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+web/ui/build
+web/admin/build
+web/ui/.svelte-kit
+web/admin/.svelte-kit
+output
+*.dump
+config.local.toml
+data_manifest.local.toml
+.env

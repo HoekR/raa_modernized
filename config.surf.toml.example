@@ -1,0 +1,20 @@
+# Copy to config.local.toml on SURF VM. Replace YOUR-SURF-HOST (no trailing slash).
+
+[database]
+# Host uses localhost when Postgres is published on 127.0.0.1:5432; API container uses db:5432 via env.
+url = "postgresql+psycopg://raa:raa@localhost:5432/raa_modernized"
+
+[web]
+api_port = 8000
+
+[data]
+extab_logical = "raa_extab"
+
+[editorial]
+enabled = true
+api_key = "change-me-use-openssl-rand-hex-32"
+editor_id = "surf-demo"
+# Single-port nginx (Path D): only port 80
+cors_origins = ["http://YOUR-SURF-HOST"]
+# Dev UIs on host (Path A): uncomment and set hostname
+# cors_origins = ["http://YOUR-SURF-HOST:5173", "http://YOUR-SURF-HOST:5174", "http://YOUR-SURF-HOST"]
