@@ -1,7 +1,7 @@
 <script lang="ts">
   import Drawer from '$lib/components/Drawer.svelte';
   import PersoonDetailBody from '$lib/components/PersoonDetailBody.svelte';
-  import { fetchPersoon, type PersoonDetail } from '$lib/detail';
+  import { fetchPersoonCached, type PersoonDetail } from '$lib/detail';
 
   let {
     open = $bindable(false),
@@ -20,7 +20,7 @@
     error = null;
     person = null;
     try {
-      person = await fetchPersoon(id);
+      person = await fetchPersoonCached(id);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {

@@ -5,14 +5,29 @@
   import Drawer from '$lib/components/Drawer.svelte';
   import FacetPanel from '$lib/components/FacetPanel.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
-  import PersoonDetailDrawer from '$lib/components/PersoonDetailDrawer.svelte';
+  import PersoonHoverPreview from '$lib/components/PersoonHoverPreview.svelte';
+  import PersoonPreviewIcon from '$lib/components/PersoonPreviewIcon.svelte';
   import StandAdel from '$lib/components/StandAdel.svelte';
   import { MAX_CHIPS, PAGE_SIZE, periodKey, type FacetValue, type SuggestItem } from '$lib/period';
   import { groupNested, personName, searchEntity } from '$lib/search';
   import { fetchFunctie, fetchInstelling } from '$lib/detail';
   import { SearchRunGuard } from '$lib/searchRunner';
+  import { HoverPreviewController, createPersoonPreviewHandlers } from '$lib/hoverPreview';
 
   const searchGuard = new SearchRunGuard();
+  const hoverCtl = new HoverPreviewController();
+  const preview = createPersoonPreviewHandlers({
+    hoverCtl,
+    isBlocked: () => refineOpen,
+    getActiveId: () => hoverPersonId,
+    show: (id, top) => {
+      hoverPersonId = id;
+      hoverTop = top;
+    },
+    hide: () => {
+      hoverPersonId = null;
+    },
+  });
 
   let q = $state('');
   let van = $state('');
@@ -31,8 +46,8 @@
   let adelOnly = $state(false);
   let offset = $state(0);
   let refineOpen = $state(false);
-  let detailOpen = $state(false);
-  let detailPersonId = $state<number | null>(null);
+  let hoverPersonId = $state<number | null>(null);
+  let hoverTop = $state(0);
   let seeded = $state(false);
 
   let total = $state<number | null>(null);
@@ -146,12 +161,8 @@
     runSearch();
   }
 
-  function openPerson(id: unknown) {
-    const n = Number(id);
-    if (!Number.isNaN(n)) {
-      detailPersonId = n;
-      detailOpen = true;
-    }
+  function hideHover() {
+    preview.hideNow();
   }
 
   const nested = $derived(
@@ -248,7 +259,16 @@
       runSearch();
     });
   });
+
+  $effect(() => {
+    if (refineOpen) hideHover();
+  });
 </script>
+
+<svelte:window
+  onscroll={() => hideHover()}
+  onresize={() => hideHover()}
+/>
 
 <section class="search-page">
   <h2>Aanstellingen zoeken</h2>
@@ -321,11 +341,17 @@
                 </thead>
                 <tbody>
                   {#each inner.rows as row}
-                    <tr class="row-clickable" onclick={() => openPerson(row.persoon_id)}>
-                      <td>
-                        <a href="/personen/{row.persoon_id}" onclick={(e) => e.stopPropagation()}
-                          >{personName(row)}</a
-                        >
+                    {@const pid = Number(row.persoon_id)}
+                    <tr>
+                      <td class="name-cell">
+                        <a href="/personen/{row.persoon_id}">{personName(row)}</a>
+                        {#if !Number.isNaN(pid)}
+                          <PersoonPreviewIcon
+                            ontrigger={(e) => preview.showPreview(e, pid)}
+                            onrelease={preview.hidePreviewSoon}
+                            onclick={(e) => preview.togglePreview(e, pid)}
+                          />
+                        {/if}
                       </td>
                       <td class="date">{String(row.van_als_bekend ?? '?')}</td>
                       <td class="date">{String(row.tot_als_bekend ?? '?')}</td>
@@ -405,7 +431,13 @@
   </div>
 </Drawer>
 
-<PersoonDetailDrawer bind:open={detailOpen} bind:personId={detailPersonId} />
+<PersoonHoverPreview
+  open={hoverPersonId != null}
+  personId={hoverPersonId}
+  anchorTop={hoverTop}
+  onenter={() => hoverCtl.cancel()}
+  onleave={preview.hidePreviewSoon}
+/>
 
 <style>
   .nested-group {

@@ -21,16 +21,16 @@ async function loadPeriods(periodSelect, context) {
   const res = await fetch(`/api/periods?context=${encodeURIComponent(context)}`);
   const periods = await res.json();
   periodSelect.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = "all";
+  all.textContent = "Alle perioden (1428–1861)";
+  periodSelect.appendChild(all);
   for (const p of periods) {
     const opt = document.createElement("option");
     opt.value = p.key;
     opt.textContent = `${p.label} (${p.count})`;
     periodSelect.appendChild(opt);
   }
-  const all = document.createElement("option");
-  all.value = "all";
-  all.textContent = "Alle perioden";
-  periodSelect.appendChild(all);
   if (periods.length) periodSelect.value = periods[0].key;
 }
 

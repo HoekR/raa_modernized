@@ -5,14 +5,29 @@
   import Drawer from '$lib/components/Drawer.svelte';
   import FacetPanel from '$lib/components/FacetPanel.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
-  import PersoonDetailDrawer from '$lib/components/PersoonDetailDrawer.svelte';
+  import PersoonHoverPreview from '$lib/components/PersoonHoverPreview.svelte';
+  import PersoonPreviewIcon from '$lib/components/PersoonPreviewIcon.svelte';
   import SortPills from '$lib/components/SortPills.svelte';
   import StandAdel from '$lib/components/StandAdel.svelte';
   import { MAX_CHIPS, PAGE_SIZE, periodKey, type FacetValue, type SuggestItem } from '$lib/period';
   import { lifeCell, listingName, searchEntity } from '$lib/search';
+  import { HoverPreviewController, createPersoonPreviewHandlers } from '$lib/hoverPreview';
   import { SearchRunGuard } from '$lib/searchRunner';
 
   const searchGuard = new SearchRunGuard();
+  const hoverCtl = new HoverPreviewController();
+  const preview = createPersoonPreviewHandlers({
+    hoverCtl,
+    isBlocked: () => refineOpen,
+    getActiveId: () => hoverPersonId,
+    show: (id, top) => {
+      hoverPersonId = id;
+      hoverTop = top;
+    },
+    hide: () => {
+      hoverPersonId = null;
+    },
+  });
 
   let q = $state('');
   let letter = $state<string | null>(null);
@@ -35,9 +50,8 @@
   let sortDir = $state<'asc' | 'desc'>('asc');
   let offset = $state(0);
   let refineOpen = $state(false);
-  let detailOpen = $state(false);
-  let detailPersonId = $state<number | null>(null);
-  let selectedRowId = $state<number | null>(null);
+  let hoverPersonId = $state<number | null>(null);
+  let hoverTop = $state(0);
 
   let total = $state<number | null>(null);
   let hits = $state<Record<string, unknown>[]>([]);
@@ -165,10 +179,8 @@
     runSearch();
   }
 
-  function openDetail(id: number) {
-    selectedRowId = id;
-    detailPersonId = id;
-    detailOpen = true;
+  function hideHover() {
+    preview.hideNow();
   }
 
   const activeChips = $derived.by(() => {
@@ -244,7 +256,16 @@
     offset = 0;
     runSearch();
   });
+
+  $effect(() => {
+    if (refineOpen) hideHover();
+  });
 </script>
+
+<svelte:window
+  onscroll={() => hideHover()}
+  onresize={() => hideHover()}
+/>
 
 <section class="search-page">
   <h2>Personen zoeken</h2>
@@ -321,16 +342,14 @@
             {@const geb = lifeCell(row, 'geboorte')}
             {@const ovl = lifeCell(row, 'overlijden')}
             {@const id = Number(row.id)}
-            <tr
-              class="row-clickable"
-              class:row-selected={selectedRowId === id && detailOpen}
-              onclick={() => openDetail(id)}
-            >
-              <td>
-                <a
-                  href="/personen/{row.id}"
-                  onclick={(e) => e.stopPropagation()}>{listingName(row)}</a
-                >
+            <tr>
+              <td class="name-cell">
+                <a href="/personen/{row.id}">{listingName(row)}</a>
+                <PersoonPreviewIcon
+                  ontrigger={(e) => preview.showPreview(e, id)}
+                  onrelease={preview.hidePreviewSoon}
+                  onclick={(e) => preview.togglePreview(e, id)}
+                />
               </td>
               <td class="date">
                 <span
@@ -406,4 +425,10 @@
   </div>
 </Drawer>
 
-<PersoonDetailDrawer bind:open={detailOpen} bind:personId={detailPersonId} />
+<PersoonHoverPreview
+  open={hoverPersonId != null}
+  personId={hoverPersonId}
+  anchorTop={hoverTop}
+  onenter={() => hoverCtl.cancel()}
+  onleave={preview.hidePreviewSoon}
+/>

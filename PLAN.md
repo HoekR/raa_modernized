@@ -1,6 +1,6 @@
 # RAA Modern Webapp Port Plan
 
-> **Active build track:** **C** (SvelteKit hybrid search + detail pages shipped; **C4** static pilot next). Legacy hit counts in VALIDATION_RQS remain async.  
+> **Active build track:** **C** (SvelteKit UI). Static pilot kept until **beta** (C4 deferred).  
 > **Roadmap:** [Milestones](#milestones-roadmap) · **Todos:** [checklist](#todos-living-checklist) · **Decisions:** [docs/MIGRATION_LOG.md](docs/MIGRATION_LOG.md) · **Legacy UX:** [LEGACY-UX.md](LEGACY-UX.md)
 
 ### Current status (2026-08-16)
@@ -71,7 +71,7 @@ Check items off here when shipped; log decisions in [MIGRATION_LOG.md](docs/MIGR
 - [x] **C2a** — personen hybrid UI: basic `q` + live facet sidebar + advanced filters (D-60)
 - [x] **C2b** — hybrid aanstellingen (+ facets); themed instellingen/functies browse
 - [x] **C3** — SvelteKit detail pages (persoon / instelling / functie) with theme
-- [ ] **C4** — retire static pilot
+- [ ] **C4** — retire static pilot (**deferred until beta**; keep `/static/` alongside SvelteKit for now)
 
 ### Backlog (blocked or low priority)
 
@@ -607,6 +607,8 @@ Legacy AND/OR multi-select: per filter group where multiple values apply; same s
 
 Huygens public IDs ≠ pilot `persoon.id`. Known example: legacy **6448** → pilot **21009** (Tjaerd van Aylva). Do not use Huygens IDs in pilot deep links until concordance is imported. When ready: auxiliary mapping table at import + lookup/redirect (personen first).
 
+Later (no priority): provide a **silent legacy-ID person lookup** endpoint (`/personen/oud/{legacy_id}`) that redirects to the normal modern detail page, without showing legacy IDs anywhere else in the UI.
+
 ### Milestone B4 — Pilot hardening (**in progress**)
 
 | Slice   | Scope | Status |
@@ -624,7 +626,7 @@ Huygens public IDs ≠ pilot `persoon.id`. Known example: legacy **6448** → pi
 | **C1** | Scaffold SvelteKit (`web/ui/`) against existing FastAPI; home + personen search stub | **shipped** 2026-08-16 |
 | **C2** | Port four search contexts + period selector + typeahead/chips + A–Z browse | **shipped** 2026-08-16 |
 | **C3** | Port detail pages (persoon / instelling / functie) | open |
-| **C4** | Retire static HTML/JS pilot (or keep as fallback) | open |
+| **C4** | Retire static HTML/JS pilot | **deferred until beta** (both UIs for now) |
 
 Run: API via `./scripts/dev.sh`, UI via `cd web/ui && npm install && npm run dev` → http://127.0.0.1:5173
 
@@ -1019,6 +1021,6 @@ Store overrides as YAML/JSON in `editorial/` at repo root (manifest-backed). Via
 See the [Todos checklist](#todos-living-checklist) for the authoritative open list.
 
 **Immediate:** C3 (SvelteKit detail pages). Legacy hit counts in VALIDATION_RQS remain async.  
-**Then:** C4 retire static.  
+**Then:** graphs (D-UI-14) or deploy prep; **C4** (retire static) waits until **beta**.  
 **Later:** D deploy · E editorial.
 

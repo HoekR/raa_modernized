@@ -74,8 +74,19 @@ export function formatNamens(a: AanstellingDetail): string {
   return [a.provincie, a.regio, a.lokaal, a.stand].filter(Boolean).join(' / ');
 }
 
+const persoonCache = new Map<number, PersoonDetail>();
+
 export async function fetchPersoon(id: number | string): Promise<PersoonDetail> {
   return apiGet(`/api/personen/${id}`);
+}
+
+export async function fetchPersoonCached(id: number | string): Promise<PersoonDetail> {
+  const n = Number(id);
+  const cached = persoonCache.get(n);
+  if (cached) return cached;
+  const data = await fetchPersoon(n);
+  persoonCache.set(n, data);
+  return data;
 }
 
 export async function fetchInstelling(id: number | string): Promise<{

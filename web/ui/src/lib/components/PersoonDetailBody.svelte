@@ -6,9 +6,11 @@
   let {
     person,
     compact = false,
+    maxAanstellingen = 0,
   }: {
     person: PersoonDetail;
     compact?: boolean;
+    maxAanstellingen?: number;
   } = $props();
 
   const stand = $derived(
@@ -21,7 +23,11 @@
 {#if compact}
   <section class="detail-section" style="margin-top:1rem;padding-top:0;border-top:0">
     <h2 style="font-size:0.95rem">Bovenlokale aanstellingen</h2>
-    <AanstellingenTable rows={person.aanstellingen_bovenlokaal ?? []} compact />
+    <AanstellingenTable
+      rows={person.aanstellingen_bovenlokaal ?? []}
+      compact
+      maxRows={maxAanstellingen}
+    />
   </section>
 {:else}
   {#if person.aliassen?.length}

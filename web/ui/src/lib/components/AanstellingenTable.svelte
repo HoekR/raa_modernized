@@ -4,10 +4,15 @@
   let {
     rows,
     compact = false,
+    maxRows = 0,
   }: {
     rows: AanstellingDetail[];
     compact?: boolean;
+    maxRows?: number;
   } = $props();
+
+  const shown = $derived(maxRows > 0 ? rows.slice(0, maxRows) : rows);
+  const extra = $derived(maxRows > 0 ? Math.max(0, rows.length - maxRows) : 0);
 
   let expanded = $state<number | null>(null);
 
@@ -37,7 +42,7 @@
       </tr>
     </thead>
     <tbody>
-      {#each rows as a, i}
+      {#each shown as a, i}
         <tr>
           <td>
             {#if a.functie_id}
@@ -86,4 +91,7 @@
       {/each}
     </tbody>
   </table>
+  {#if extra > 0}
+    <p class="hint" style="margin:0.4rem 0 0">+{extra} meer</p>
+  {/if}
 {/if}

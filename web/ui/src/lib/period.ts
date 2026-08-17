@@ -2,6 +2,8 @@ import { derived, writable } from 'svelte/store';
 
 export type PeriodCount = { key: string; label: string; count: number };
 
+export const ALL_PERIODS_LABEL = 'Alle perioden (1428–1861)';
+
 /** Selected period key, or `"all"` for overall mode. */
 export const periodKey = writable<string>('republiek');
 

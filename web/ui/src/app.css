@@ -840,6 +840,107 @@ tbody tr.row-selected {
   font-weight: 500;
 }
 
+/* ——— Hover preview (search rows) ——— */
+.hover-preview {
+  position: fixed;
+  right: 1rem;
+  width: min(22.5rem, calc(100vw - 2rem));
+  max-height: min(70vh, 34rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--raa-surface);
+  border: 1px solid var(--raa-line-strong);
+  border-radius: var(--raa-radius);
+  box-shadow: var(--raa-shadow), 0 16px 40px rgb(30 42 50 / 0.14);
+  z-index: 120;
+}
+
+.hover-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 2px solid var(--raa-accent-bright);
+  flex-shrink: 0;
+}
+
+.hover-preview-head h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--raa-ink);
+  line-height: 1.3;
+}
+
+.hover-preview-head a {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.hover-preview-body {
+  overflow: auto;
+  padding: 0.75rem 0.85rem 0.9rem;
+}
+
+.hover-preview-sub {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  color: var(--raa-ink-muted);
+}
+
+.hover-preview-more {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+td.name-cell,
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+td.name-cell > a,
+.name-cell > a {
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--raa-radius);
+  background: transparent;
+  color: var(--raa-ink-faint);
+  cursor: pointer;
+}
+
+.preview-icon:hover,
+.preview-icon:focus-visible {
+  color: var(--raa-accent);
+  border-color: var(--raa-line-strong);
+  background: var(--raa-accent-softer);
+  outline: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .hover-preview {
+    display: none;
+  }
+}
+
 /* ——— Life dates inline row ——— */
 .life-dates {
   display: grid;

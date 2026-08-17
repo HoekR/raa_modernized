@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { periodKey, type PeriodCount } from '$lib/period';
+  import { ALL_PERIODS_LABEL, periodKey, type PeriodCount } from '$lib/period';
 
   let { periods = [] }: { periods?: PeriodCount[] } = $props();
 </script>
@@ -10,10 +10,10 @@
     value={$periodKey}
     onchange={(e) => periodKey.set((e.currentTarget as HTMLSelectElement).value)}
   >
+    <option value="all">{ALL_PERIODS_LABEL}</option>
     {#each periods as p}
       <option value={p.key}>{p.label} ({p.count})</option>
     {/each}
-    <option value="all">Alle perioden</option>
   </select>
 </label>
 

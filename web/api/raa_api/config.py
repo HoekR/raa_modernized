@@ -4,12 +4,18 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-PERIODS = [
-    ("republiek", "Republiek"),
-    ("batfra", "Bataafs-Franse Tijd"),
-    ("negentiende_eeuw", "Negentiende Eeuw"),
-    ("me", "Middeleeuwen"),
+CORPUS_DATES = "1428–1861"
+
+# Official RAA sub-period boundaries (inleiding / Huygens RAA).
+PERIOD_DEFINITIONS: list[tuple[str, str, str]] = [
+    ("me", "Middeleeuwen", "1428–1588"),
+    ("republiek", "Republiek", "1588–1795"),
+    ("batfra", "Bataafs-Franse tijd", "1795–1813"),
+    ("negentiende_eeuw", "Negentiende eeuw", "1813–1861"),
 ]
+
+PERIODS = [(key, f"{label} ({dates})") for key, label, dates in PERIOD_DEFINITIONS]
+ALL_PERIODS_LABEL = f"Alle perioden ({CORPUS_DATES})"
 
 
 @lru_cache

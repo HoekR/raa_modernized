@@ -68,7 +68,8 @@ Combines user preferences from review (2026-08-17):
 - **Default view:** search input + compact A–Z + results table + sort row only.
 - **Verfijnen drawer:** opens from right; inside = B-style facet column + advanced filter fields (dates, typeahead, stand/adel). Live facet counts still update results behind the drawer.
 - **Active chips:** shown inline above results only when filters are applied (not an empty chip bar).
-- **Row click:** opens **detail drawer** (same content as detail page, condensed); full route `/personen/{id}` remains for deep links and “Volledige pagina”.
+- **Preview icon** (eye, no label) next to naam — hover/focus shows **peek card** on the right.
+- **Naam link** → full detail page `/personen/{id}`. Click row no longer opens drawer.
 
 Simple pages (instellingen, functies): same shell minus facet drawer content.
 
@@ -190,6 +191,7 @@ See ASCII above and mockup tab **D** in `design-mockups.html`.
 | D-UI-12 | Detail page width | 1120px / wider | **~1400px detail routes** | 2026-08-17 | Economy of horizontal space |
 | D-UI-13 | Secondary detail sections | on-page / drawer | **drawer** | 2026-08-17 | Aliassen, bronnen, lokaal, long notes |
 | D-UI-14 | Charts / graphs | now / later | **later** | 2026-08-17 | Bar chart in refine drawer first candidate |
+| D-UI-15 | Result hover preview | none / tooltip / peek card | **icon-triggered peek card** | 2026-08-17 | Eye icon beside naam; hover/focus → peek. Naam → full page. |
 
 ---
 
