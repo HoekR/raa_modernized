@@ -119,7 +119,7 @@ def api_browse_az(
     size: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    if entity not in {"instellingen", "functies"}:
+    if entity not in {"personen", "instellingen", "functies"}:
         raise HTTPException(status_code=404, detail="Onbekende browse-entiteit")
     try:
         return browse_az(

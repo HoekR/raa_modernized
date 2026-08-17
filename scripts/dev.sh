@@ -11,7 +11,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT}/web/docker-compose.yml"
-DATABASE_URL="${DATABASE_URL:-postgresql+psycopg://raa:raa@localhost:5432/raa_modernized}"
+export DATABASE_URL="${DATABASE_URL:-postgresql+psycopg://raa:raa@localhost:5432/raa_modernized}"
 API_HOST="${API_HOST:-127.0.0.1}"
 API_PORT="${API_PORT:-8000}"
 GUNICORN_WORKERS="${GUNICORN_WORKERS:-2}"
@@ -40,18 +40,29 @@ for arg in "$@"; do
   esac
 done
 
+# Prefer compose; fall back when the compose plugin is broken (D-42 / D-53).
 compose() {
-  docker compose -f "$COMPOSE_FILE" "$@"
+  if docker compose version >/dev/null 2>&1; then
+    docker compose -f "$COMPOSE_FILE" "$@"
+  elif command -v docker-compose >/dev/null 2>&1; then
+    docker-compose -f "$COMPOSE_FILE" "$@"
+  else
+    echo "Neither 'docker compose' nor 'docker-compose' is available." >&2
+    exit 1
+  fi
 }
 
 ensure_compose_db() {
-  if docker ps --format '{{.Names}}' | grep -q '^raa_pg$'; then
-    echo "Note: legacy container 'raa_pg' is running on :5432."
-    echo "      Prefer: docker stop raa_pg && ./scripts/dev.sh"
-    echo "      (compose uses its own volume in web/docker-compose.yml)"
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^raa_pg$'; then
+    echo "Using existing container 'raa_pg' on :5432."
     return 0
   fi
-  if ! docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null | grep -qx 'db'; then
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^raa_pg$'; then
+    echo "Starting existing container 'raa_pg'..."
+    docker start raa_pg >/dev/null
+    return 0
+  fi
+  if ! compose ps --status running --services 2>/dev/null | grep -qx 'db'; then
     echo "Starting Postgres (docker compose)..."
     compose up -d db
   fi

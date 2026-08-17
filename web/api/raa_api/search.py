@@ -93,7 +93,11 @@ def _persoon_text_token_clause(param_key: str) -> str:
     )"""
 
 
-def _persoon_where(req: SearchRequest) -> tuple[str, dict]:
+def _persoon_where(
+    req: SearchRequest, *, omit_filter_keys: set[str] | None = None
+) -> tuple[str, dict]:
+    """Build personen WHERE. omit_filter_keys skips those filters (for disjunctive facets)."""
+    omit = omit_filter_keys or set()
     where = [_period_clause("p", req.period, req.period_mode)]
     params: dict = {}
 
@@ -104,25 +108,55 @@ def _persoon_where(req: SearchRequest) -> tuple[str, dict]:
             where.append(_persoon_text_token_clause(key))
             params[key] = pattern
 
-    instelling_ids = _int_ids(req.filters, "instelling_id")
-    if instelling_ids:
-        where.extend(
-            _multi_fk_clauses(
-                "p", "instelling_id", instelling_ids, req.instelling_match, req.period, req.period_mode
+    if "instelling_id" not in omit:
+        instelling_ids = _int_ids(req.filters, "instelling_id")
+        if instelling_ids:
+            where.extend(
+                _multi_fk_clauses(
+                    "p",
+                    "instelling_id",
+                    instelling_ids,
+                    req.instelling_match,
+                    req.period,
+                    req.period_mode,
+                )
             )
-        )
 
-    functie_ids = _int_ids(req.filters, "functie_id")
-    if functie_ids:
-        where.extend(
-            _multi_fk_clauses(
-                "p", "functie_id", functie_ids, req.functie_match, req.period, req.period_mode
+    if "functie_id" not in omit:
+        functie_ids = _int_ids(req.filters, "functie_id")
+        if functie_ids:
+            where.extend(
+                _multi_fk_clauses(
+                    "p",
+                    "functie_id",
+                    functie_ids,
+                    req.functie_match,
+                    req.period,
+                    req.period_mode,
+                )
             )
-        )
 
-    where.extend(_geo_exists_clauses("p", req.filters))
-    where.extend(_stand_exists_clauses("p", req.filters))
-    where.extend(_adel_person_clause(req.filters))
+    geo_filters = (
+        {k: v for k, v in req.filters.items() if k not in omit}
+        if omit
+        else req.filters
+    )
+    where.extend(_geo_exists_clauses("p", geo_filters))
+    if "stand_id" not in omit:
+        where.extend(_stand_exists_clauses("p", req.filters))
+    if "adel" not in omit:
+        where.extend(_adel_person_clause(req.filters))
+    letter = (_date_filter(req.filters, "letter") or "").strip().upper()
+    if letter and letter != "ALL":
+        name_letter = (
+            "LEFT(UPPER(COALESCE(NULLIF(TRIM(p.geslachtsnaam), ''), "
+            "NULLIF(TRIM(p.voornaam), ''), '')), 1)"
+        )
+        if letter == "#":
+            where.append(f"({name_letter} = '' OR {name_letter} !~ '^[A-Z]$')")
+        elif len(letter) == 1 and letter.isalpha():
+            where.append(f"{name_letter} = :naam_letter")
+            params["naam_letter"] = letter
     life_clauses, life_params = _life_date_clauses(req)
     where.extend(life_clauses)
     params.update(life_params)
@@ -263,7 +297,9 @@ def _adel_aanstelling_clause(filters: dict[str, list[str]]) -> list[str]:
 
 
 PERSONEN_SORT_COLUMNS = {
-    "geslachtsnaam": "p.geslachtsnaam",
+    "geslachtsnaam": (
+        "COALESCE(NULLIF(TRIM(p.geslachtsnaam), ''), NULLIF(TRIM(p.voornaam), ''), '')"
+    ),
     "voornaam": "p.voornaam",
     "geboortedatum": "p.geboortedatum",
     "overlijdensdatum": "p.overlijdensdatum",
@@ -317,7 +353,11 @@ def _date_filter(filters: dict[str, list[str]], key: str) -> str | None:
 def search_personen(db: Session, req: SearchRequest) -> SearchResponse:
     where_sql, params = _persoon_where(req)
     params = {**params, "limit": req.size, "offset": req.from_}
-    sort_col = PERSONEN_SORT_COLUMNS.get(req.sort, "p.geslachtsnaam")
+    sort_col = PERSONEN_SORT_COLUMNS.get(req.sort, PERSONEN_SORT_COLUMNS["geslachtsnaam"])
+    direction = "DESC" if req.sort_dir == "desc" else "ASC"
+    # Secondary key keeps ties stable when reversing direction
+    secondary = "p.voornaam" if req.sort != "voornaam" else "p.id"
+    order_sql = f"{sort_col} {direction} NULLS LAST, {secondary} ASC NULLS LAST"
 
     total = int(
         db.execute(
@@ -340,7 +380,7 @@ def search_personen(db: Session, req: SearchRequest) -> SearchResponse:
             LEFT JOIN raa.adellijke_titel adt ON adt.id = p.adellijketitel_id
             LEFT JOIN raa.academische_titel act ON act.id = p.academischetitel_id
             WHERE {where_sql}
-            ORDER BY {sort_col} NULLS LAST
+            ORDER BY {order_sql}
             LIMIT :limit OFFSET :offset
             """
         ),
@@ -356,46 +396,93 @@ def search_personen(db: Session, req: SearchRequest) -> SearchResponse:
     return SearchResponse(hits=hits, total=total, facets=facets)
 
 
+_PERSONEN_FACET_LIMIT = 20
+
+
+def _personen_facet_base(
+    req: SearchRequest, omit: set[str]
+) -> tuple[str, dict]:
+    return _persoon_where(req, omit_filter_keys=omit)
+
+
 def _personen_facets(
     db: Session, where_sql: str, params: dict, req: SearchRequest
 ) -> dict[str, list[FacetValue]]:
+    """Live facet counts for the current personen result set (disjunctive per dimension)."""
     facets: dict[str, list[FacetValue]] = {}
+    period_sql = _period_clause("a", req.period, req.period_mode)
+
     if req.period_mode == "overall":
         period_facets = []
         for key, label in PERIODS:
             clause = f"{where_sql} AND {_period_match_sql('p', key)}"
             count = int(
-                db.execute(text(f"SELECT COUNT(*) FROM raa.persoon p WHERE {clause}"), params).scalar() or 0
+                db.execute(
+                    text(f"SELECT COUNT(*) FROM raa.persoon p WHERE {clause}"), params
+                ).scalar()
+                or 0
             )
-            period_facets.append(FacetValue(key=key, label=label, count=count))
+            if count:
+                period_facets.append(FacetValue(key=key, label=label, count=count))
         facets["period"] = period_facets
 
+    stand_where, stand_params = _personen_facet_base(req, {"stand_id"})
     stand_rows = db.execute(
         text(
             f"""
             SELECT s.stand_id, s.naam, COUNT(DISTINCT p.id)
             FROM raa.persoon p
-            JOIN raa.aanstelling a ON a.persoon_id = p.id
+            JOIN raa.aanstelling a ON a.persoon_id = p.id AND {period_sql}
             JOIN raa.stand s ON s.stand_id = a.stand_id
-            WHERE {where_sql}
+            WHERE {stand_where}
             GROUP BY s.stand_id, s.naam
-            ORDER BY s.naam
+            ORDER BY COUNT(DISTINCT p.id) DESC, s.naam
             """
         ),
-        params,
+        stand_params,
     ).all()
     facets["stand"] = [
         FacetValue(key=str(row[0]), label=row[1], count=int(row[2])) for row in stand_rows
     ]
+
+    adel_where, adel_params = _personen_facet_base(req, {"adel"})
     adel_count = int(
         db.execute(
-            text(f"SELECT COUNT(*) FROM raa.persoon p WHERE {where_sql} AND p.adel = 1"),
-            params,
+            text(f"SELECT COUNT(*) FROM raa.persoon p WHERE {adel_where} AND p.adel = 1"),
+            adel_params,
         ).scalar()
         or 0
     )
     if adel_count:
         facets["adel"] = [FacetValue(key="1", label="Adel", count=adel_count)]
+
+    for facet_key, table, join_col in (
+        ("functie", "functie", "functie_id"),
+        ("instelling", "instelling", "instelling_id"),
+        ("provincie", "provincie", "provincie_id"),
+        ("regio", "regio", "regio_id"),
+        ("lokaal", "lokaal", "lokaal_id"),
+    ):
+        dim_where, dim_params = _personen_facet_base(req, {join_col})
+        rows = db.execute(
+            text(
+                f"""
+                SELECT t.id, t.naam, COUNT(DISTINCT p.id)
+                FROM raa.persoon p
+                JOIN raa.aanstelling a ON a.persoon_id = p.id AND {period_sql}
+                JOIN raa.{table} t ON t.id = a.{join_col}
+                WHERE {dim_where}
+                GROUP BY t.id, t.naam
+                ORDER BY COUNT(DISTINCT p.id) DESC, t.naam
+                LIMIT {_PERSONEN_FACET_LIMIT}
+                """
+            ),
+            dim_params,
+        ).all()
+        facets[facet_key] = [
+            FacetValue(key=str(row[0]), label=row[1], count=int(row[2])) for row in rows
+        ]
+
     return facets
 
 
@@ -506,31 +593,42 @@ def list_periods(db: Session, context: str = "personen") -> list[PeriodCount]:
     return result
 
 
-def _aanstelling_where(req: SearchRequest) -> tuple[str, dict]:
+def _aanstelling_where(
+    req: SearchRequest, *, omit_filter_keys: set[str] | None = None
+) -> tuple[str, dict]:
+    omit = omit_filter_keys or set()
     where = [_period_clause("a", req.period, req.period_mode)]
     params: dict = {}
 
-    functie_ids = _int_ids(req.filters, "functie_id")
-    if functie_ids:
-        where.extend(
-            _aanstelling_multi_fk_clauses(
-                "a", "p", "functie_id", functie_ids, req.functie_match, req.period, req.period_mode
+    if "functie_id" not in omit:
+        functie_ids = _int_ids(req.filters, "functie_id")
+        if functie_ids:
+            where.extend(
+                _aanstelling_multi_fk_clauses(
+                    "a",
+                    "p",
+                    "functie_id",
+                    functie_ids,
+                    req.functie_match,
+                    req.period,
+                    req.period_mode,
+                )
             )
-        )
 
-    instelling_ids = _int_ids(req.filters, "instelling_id")
-    if instelling_ids:
-        where.extend(
-            _aanstelling_multi_fk_clauses(
-                "a",
-                "p",
-                "instelling_id",
-                instelling_ids,
-                req.instelling_match,
-                req.period,
-                req.period_mode,
+    if "instelling_id" not in omit:
+        instelling_ids = _int_ids(req.filters, "instelling_id")
+        if instelling_ids:
+            where.extend(
+                _aanstelling_multi_fk_clauses(
+                    "a",
+                    "p",
+                    "instelling_id",
+                    instelling_ids,
+                    req.instelling_match,
+                    req.period,
+                    req.period_mode,
+                )
             )
-        )
 
     van = _normalize_filter_date(_date_filter(req.filters, "van"), end=False)
     if van:
@@ -550,11 +648,92 @@ def _aanstelling_where(req: SearchRequest) -> tuple[str, dict]:
             params[key] = pattern
         where.append(f"({' AND '.join(person_clauses)})")
 
-    where.extend(_geo_aanstelling_clauses(req.filters))
-    where.extend(_stand_aanstelling_clause(req.filters))
-    where.extend(_adel_aanstelling_clause(req.filters))
+    geo_filters = (
+        {k: v for k, v in req.filters.items() if k not in omit} if omit else req.filters
+    )
+    where.extend(_geo_aanstelling_clauses(geo_filters))
+    if "stand_id" not in omit:
+        where.extend(_stand_aanstelling_clause(req.filters))
+    if "adel" not in omit:
+        where.extend(_adel_aanstelling_clause(req.filters))
 
     return " AND ".join(where), params
+
+
+_AANSTELLING_FACET_LIMIT = 20
+
+
+def _aanstelling_facets(
+    db: Session, where_sql: str, params: dict, req: SearchRequest
+) -> dict[str, list[FacetValue]]:
+    """Live facet counts for aanstellingen (disjunctive per dimension)."""
+    del where_sql, params  # rebuild per dimension
+    facets: dict[str, list[FacetValue]] = {}
+
+    for facet_key, table, join_col in (
+        ("functie", "functie", "functie_id"),
+        ("instelling", "instelling", "instelling_id"),
+        ("provincie", "provincie", "provincie_id"),
+        ("regio", "regio", "regio_id"),
+        ("lokaal", "lokaal", "lokaal_id"),
+    ):
+        dim_where, dim_params = _aanstelling_where(req, omit_filter_keys={join_col})
+        rows = db.execute(
+            text(
+                f"""
+                SELECT t.id, t.naam, COUNT(a.id)
+                FROM raa.aanstelling a
+                JOIN raa.persoon p ON p.id = a.persoon_id
+                JOIN raa.{table} t ON t.id = a.{join_col}
+                WHERE {dim_where}
+                GROUP BY t.id, t.naam
+                ORDER BY COUNT(a.id) DESC, t.naam
+                LIMIT {_AANSTELLING_FACET_LIMIT}
+                """
+            ),
+            dim_params,
+        ).all()
+        facets[facet_key] = [
+            FacetValue(key=str(row[0]), label=row[1], count=int(row[2])) for row in rows
+        ]
+
+    stand_where, stand_params = _aanstelling_where(req, omit_filter_keys={"stand_id"})
+    stand_rows = db.execute(
+        text(
+            f"""
+            SELECT s.stand_id, s.naam, COUNT(a.id)
+            FROM raa.aanstelling a
+            JOIN raa.stand s ON s.stand_id = a.stand_id
+            JOIN raa.persoon p ON p.id = a.persoon_id
+            WHERE {stand_where}
+            GROUP BY s.stand_id, s.naam
+            ORDER BY COUNT(a.id) DESC, s.naam
+            """
+        ),
+        stand_params,
+    ).all()
+    facets["stand"] = [
+        FacetValue(key=str(row[0]), label=row[1], count=int(row[2])) for row in stand_rows
+    ]
+
+    adel_where, adel_params = _aanstelling_where(req, omit_filter_keys={"adel"})
+    adel_count = int(
+        db.execute(
+            text(
+                f"""
+                SELECT COUNT(*)
+                FROM raa.aanstelling a
+                JOIN raa.persoon p ON p.id = a.persoon_id
+                WHERE {adel_where} AND p.adel = 1
+                """
+            ),
+            adel_params,
+        ).scalar()
+        or 0
+    )
+    if adel_count:
+        facets["adel"] = [FacetValue(key="1", label="Adel", count=adel_count)]
+    return facets
 
 
 def search_aanstellingen(db: Session, req: SearchRequest) -> SearchResponse:
@@ -671,84 +850,6 @@ def search_aanstellingen(db: Session, req: SearchRequest) -> SearchResponse:
     hits = [dict(row) for row in rows]
     facets = _aanstelling_facets(db, where_sql, params, req)
     return SearchResponse(hits=hits, total=total, facets=facets)
-
-
-def _aanstelling_facets(
-    db: Session, where_sql: str, params: dict, req: SearchRequest
-) -> dict[str, list[FacetValue]]:
-    facets: dict[str, list[FacetValue]] = {}
-    if not _int_ids(req.filters, "functie_id"):
-        functie_rows = db.execute(
-            text(
-                f"""
-                SELECT f.naam, COUNT(a.id)
-                FROM raa.aanstelling a
-                JOIN raa.functie f ON f.id = a.functie_id
-                JOIN raa.persoon p ON p.id = a.persoon_id
-                WHERE {where_sql}
-                GROUP BY f.naam
-                ORDER BY f.naam
-                LIMIT 50
-                """
-            ),
-            params,
-        ).all()
-        facets["functie"] = [
-            FacetValue(key=row[0], label=row[0], count=int(row[1])) for row in functie_rows
-        ]
-    if not _int_ids(req.filters, "instelling_id"):
-        inst_rows = db.execute(
-            text(
-                f"""
-                SELECT i.naam, COUNT(a.id)
-                FROM raa.aanstelling a
-                JOIN raa.instelling i ON i.id = a.instelling_id
-                JOIN raa.persoon p ON p.id = a.persoon_id
-                WHERE {where_sql}
-                GROUP BY i.naam
-                ORDER BY i.naam
-                LIMIT 50
-                """
-            ),
-            params,
-        ).all()
-        facets["instelling"] = [
-            FacetValue(key=row[0], label=row[0], count=int(row[1])) for row in inst_rows
-        ]
-    stand_rows = db.execute(
-        text(
-            f"""
-            SELECT s.stand_id, s.naam, COUNT(a.id)
-            FROM raa.aanstelling a
-            JOIN raa.stand s ON s.stand_id = a.stand_id
-            JOIN raa.persoon p ON p.id = a.persoon_id
-            WHERE {where_sql}
-            GROUP BY s.stand_id, s.naam
-            ORDER BY s.naam
-            """
-        ),
-        params,
-    ).all()
-    facets["stand"] = [
-        FacetValue(key=str(row[0]), label=row[1], count=int(row[2])) for row in stand_rows
-    ]
-    adel_count = int(
-        db.execute(
-            text(
-                f"""
-                SELECT COUNT(*)
-                FROM raa.aanstelling a
-                JOIN raa.persoon p ON p.id = a.persoon_id
-                WHERE {where_sql} AND p.adel = 1
-                """
-            ),
-            params,
-        ).scalar()
-        or 0
-    )
-    if adel_count:
-        facets["adel"] = [FacetValue(key="1", label="Adel", count=adel_count)]
-    return facets
 
 
 def _named_entity_where(prefix: str, req: SearchRequest) -> tuple[str, dict]:
@@ -880,7 +981,7 @@ def get_instelling_detail(db: Session, instelling_id: int) -> dict | None:
         {
             "naam": s["functie_naam"],
             "href": (
-                f"/static/aanstellingen.html?functie_id={s['functie_id']}"
+                f"/aanstellingen?functie_id={s['functie_id']}"
                 f"&instelling_id={instelling_id}"
             ),
             "aanstelling_count": s["aanstelling_count"],
@@ -890,7 +991,7 @@ def get_instelling_detail(db: Session, instelling_id: int) -> dict | None:
     ] or [
         {
             **f,
-            "href": f"/static/aanstellingen.html?functie_id={f['id']}&instelling_id={instelling_id}",
+            "href": f"/aanstellingen?functie_id={f['id']}&instelling_id={instelling_id}",
         }
         for f in functies
     ]
@@ -1045,7 +1146,7 @@ def get_functie_detail(db: Session, functie_id: int) -> dict | None:
         {
             "naam": s["instelling_naam"],
             "href": (
-                f"/static/aanstellingen.html?functie_id={functie_id}"
+                f"/aanstellingen?functie_id={functie_id}"
                 f"&instelling_id={s['instelling_id']}"
             ),
             "aanstelling_count": s["aanstelling_count"],
@@ -1055,7 +1156,7 @@ def get_functie_detail(db: Session, functie_id: int) -> dict | None:
     ] or [
         {
             **i,
-            "href": f"/static/aanstellingen.html?functie_id={functie_id}&instelling_id={i['id']}",
+            "href": f"/aanstellingen?functie_id={functie_id}&instelling_id={i['id']}",
         }
         for i in instellingen
     ]
@@ -1068,11 +1169,11 @@ def get_functie_detail(db: Session, functie_id: int) -> dict | None:
         actions=[
             {
                 "label": "Aanstellingen voor deze functie…",
-                "href": f"/static/aanstellingen.html?functie_id={functie_id}",
+                "href": f"/aanstellingen?functie_id={functie_id}",
             },
             {
                 "label": "Personen die deze functie bekleedden…",
-                "href": f"/static/index.html?functie_id={functie_id}",
+                "href": f"/personen?functie_id={functie_id}",
             },
         ],
         sections=[{"title": "Toelichting bij datums", "html": ENTITY_SPAN_CAVEAT_HTML}] if attestation else [],
@@ -1153,7 +1254,16 @@ def browse_az(
     from_: int = 0,
     size: int = 100,
 ) -> dict:
-    """Period-scoped A–Z catalog for instelling or functie."""
+    """Period-scoped A–Z catalog for instelling, functie, or persoon (geslachtsnaam)."""
+    if entity == "personen":
+        return _browse_personen_az(
+            db,
+            letter=letter,
+            period=period,
+            period_mode=period_mode,
+            from_=from_,
+            size=size,
+        )
     if entity == "instellingen":
         table, alias, count_fk = "raa.instelling", "t", "instelling_id"
     elif entity == "functies":
@@ -1215,6 +1325,91 @@ def browse_az(
     letters = [{"letter": row[0], "count": int(row[1])} for row in letter_rows]
     return {
         "hits": [dict(r) for r in rows],
+        "total": total,
+        "letter": letter_key or "ALL",
+        "letters": letters,
+    }
+
+
+_PERSON_SORT_NAME = (
+    "COALESCE(NULLIF(TRIM(p.geslachtsnaam), ''), NULLIF(TRIM(p.voornaam), ''), '')"
+)
+_PERSON_LETTER = f"LEFT(UPPER({_PERSON_SORT_NAME}), 1)"
+
+
+def _browse_personen_az(
+    db: Session,
+    *,
+    letter: str | None = None,
+    period: str | None = None,
+    period_mode: str = "scoped",
+    from_: int = 0,
+    size: int = 100,
+) -> dict:
+    """A–Z by geslachtsnaam (fallback voornaam when empty — D-37)."""
+    period_sql = _period_clause("p", period, period_mode)
+    where = [period_sql]
+    params: dict = {"limit": size, "offset": from_}
+    letter_key = (letter or "").strip().upper()
+    if letter_key and letter_key != "ALL":
+        if letter_key == "#":
+            where.append(f"({_PERSON_LETTER} = '' OR {_PERSON_LETTER} !~ '^[A-Z]$')")
+        elif len(letter_key) == 1 and letter_key.isalpha():
+            where.append(f"{_PERSON_LETTER} = :naam_letter")
+            params["naam_letter"] = letter_key
+
+    where_sql = " AND ".join(where)
+    total = int(
+        db.execute(
+            text(f"SELECT COUNT(*) FROM raa.persoon p WHERE {where_sql}"),
+            params,
+        ).scalar()
+        or 0
+    )
+    rows = db.execute(
+        text(
+            f"""
+            SELECT p.id, p.voornaam, p.tussenvoegsel, p.geslachtsnaam,
+                   p.geboortedatum_als_bekend, p.overlijdensdatum_als_bekend,
+                   p.geboorte_edtf, p.overlijden_edtf,
+                   p.life_start_year, p.life_end_year,
+                   p.life_start_source, p.life_end_source,
+                   adt.naam AS adellijke_titel, act.naam AS academische_titel
+            FROM raa.persoon p
+            LEFT JOIN raa.adellijke_titel adt ON adt.id = p.adellijketitel_id
+            LEFT JOIN raa.academische_titel act ON act.id = p.academischetitel_id
+            WHERE {where_sql}
+            ORDER BY {_PERSON_SORT_NAME} NULLS LAST, p.voornaam NULLS LAST
+            LIMIT :limit OFFSET :offset
+            """
+        ),
+        params,
+    ).mappings().all()
+    hits = []
+    for row in rows:
+        item = dict(row)
+        item["display_naam"] = format_persoon_listing_name(item)
+        hits.append(item)
+
+    letter_rows = db.execute(
+        text(
+            f"""
+            SELECT
+              CASE
+                WHEN {_PERSON_LETTER} ~ '^[A-Z]$' THEN {_PERSON_LETTER}
+                ELSE '#'
+              END AS letter,
+              COUNT(*) AS count
+            FROM raa.persoon p
+            WHERE {period_sql}
+            GROUP BY 1
+            ORDER BY 1
+            """
+        ),
+    ).all()
+    letters = [{"letter": row[0], "count": int(row[1])} for row in letter_rows]
+    return {
+        "hits": hits,
         "total": total,
         "letter": letter_key or "ALL",
         "letters": letters,

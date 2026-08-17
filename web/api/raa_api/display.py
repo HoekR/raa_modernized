@@ -101,7 +101,7 @@ def format_corpus_witness(
     name = _s(instelling_naam)
     if name and instelling_id:
         return (
-            f'{year_text} — <a href="/static/instellingen.html?instelling={instelling_id}">'
+            f'{year_text} — <a href="/instellingen/{int(instelling_id)}">'
             f"{name}</a>"
         )
     return year_text

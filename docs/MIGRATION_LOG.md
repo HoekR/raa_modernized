@@ -83,6 +83,7 @@ Strategic choices, ordered by topic. Status: **decided** | **pilot** | **deferre
 | D-56 | Span labels = **database witnesses**, not office invention/abolition | Earliest/latest dated aanstelling only; same functienaam may appear in parallel or sequential institutional contexts | **decided** (2026-07-13) |
 | D-57 | **No inferred ambtsketen** across contexts | Do not merge successor `instelling_id`s or fill gaps; UI shows separate context rows + explicit caveat; link to institutionele toelichting / zoekhulp | **decided** (2026-07-13) |
 | D-59 | **Shadow `search_display`** on `persoon` | Legacy `searchable` is surname-skewed; identity search needs display naam + titels + alias + heerlijkheid + opmerkingen in one indexed blob (B2f) | **decided** (2026-07-14) |
+| D-60 | **Hybrid search UI** (basic + facets) | Keep simple `q` search; add live facet sidebar with counts; advanced filters collapsed — not pure form, not facets-only | **decided** (2026-08-16) |
 
 **D-56 note (institutional view paradox):** RAA was built and edited from an **institutional perspective**, yet the schema stores flat `instelling` rows without lineage between regime-specific successors. Discontinuities in span tables may therefore reflect **modelling/snapshot boundaries** (re-keying after 1795, separate edit tracks) as much as missing data — strange but expected until an explicit succession model exists.
 
@@ -254,6 +255,83 @@ In `raa_convert`, Fries/Republic data was **edited on a separate track** from th
 
 ---
 
+### 2026-08-16 — C3: SvelteKit detail pages (themed)
+
+**Done**
+
+- Routes: `/personen/[id]`, `/instellingen/[id]`, `/functies/[id]` with archive-blue detail chrome.
+- Search result links point at SvelteKit details (no longer only `/static/`).
+- API profile hrefs updated to modern paths; client still rewrites legacy `/static/` HTML if present.
+
+**Next:** C2b hybrid facets on other search contexts; polish deep-links into aanstellingen filters.
+
+---
+
+### 2026-08-16 — C2a: personen hybrid search (D-60)
+
+**Done**
+
+- Personen API facets expanded: stand, adel, functie, instelling, provincie, regio, lokaal (top 20, disjunctive per dimension).
+- SvelteKit personen: basic naam search + results + **facet sidebar**; advanced filters in `<details>`; active filter chips.
+- Template for C2b on other contexts.
+
+**Next:** C2b hybrid on aanstellingen; then C3 detail pages.
+
+---
+
+### 2026-08-16 — C2: period + full filters in SvelteKit
+
+**Done**
+
+- Global period selector (scoped / Alle perioden) shared across contexts.
+- **Personen:** naam, EDTF life dates, aanstellingsdatum, functie/instelling chips + en/of, geo chips, stand/adel, sort, pagination.
+- **Aanstellingen:** same chips/geo/stand + van/tot, nested grouping, sort.
+- **Instellingen / functies:** search + A–Z browse (period-scoped).
+- Detail links still point at static pilot until C3.
+
+---
+
+### 2026-08-16 — C1: SvelteKit scaffold (`web/ui`)
+
+**Done**
+
+- New `web/ui/` SvelteKit app (adapter-static, Vite proxy to `:8000`).
+- Routes: home entry, personen search stub, placeholders for other contexts.
+- Static pilot remains at `web/frontend/static/` until C4.
+
+**Next:** C2 — period selector + full filter parity.
+
+---
+
+### 2026-08-16 — B4b (partial): validation matrix + ID correction
+
+**Done**
+
+- Reworked [VALIDATION_RQS.md](VALIDATION_RQS.md): pilot capable on all RQs; X1–X5 marked PASS (automated / detail).
+- **Corrected D-58 sample:** Huygens URL 6448 biography → pilot **21510** (was wrongly documented as 21009).
+- Legacy **hit counts** still open (interactive Huygens forms); B3 formal close deferred.
+
+**Decision**
+
+Proceed to **Milestone C** (SvelteKit) while Legacy count cells can be filled asynchronously.
+
+---
+
+### 2026-08-16 — B4a + B4c: `dev.sh` harden + `make check`
+
+**Done**
+
+- **B4a:** `scripts/dev.sh` exports `DATABASE_URL`; falls back to legacy `raa_pg` when compose plugin missing; still supports `--import` / `--prod` / `stop`.
+- **B4c:** root `Makefile` — `make check` (pytest root + web/api), `make smoke` / `make check-db` run `validation_rq_smoke.py --assert`.
+- Smoke now asserts locked RQ baselines (P1/P2/P3/A1/I1/F1) and automates **X1–X5** against the pilot DB.
+
+**Still open**
+
+- **B4b** / B3 close: fill Huygens Legacy columns in VALIDATION_RQS.
+- Start Postgres locally before `make check-db` (`docker start raa_pg` or `./scripts/dev.sh --db-only`).
+
+---
+
 ### 2026-07-17 — B3d + B3e: aanstellingsdatum + A–Z browse
 
 **Done**
@@ -295,13 +373,14 @@ User has a concordance mapping legacy Huygens entity numbers to modern import ID
 
 Defer to **B3f** backlog: auxiliary `legacy_id_map` table at import, personen first; optional redirect route. No implementation in current validation sprint.
 
-**Known mapping (anchor for validation)**
+**Known mapping (anchor for validation) — corrected 2026-08-16**
 
-| Entity | Legacy (Huygens) | Modern (pilot) | Naam |
-|--------|------------------|----------------|------|
-| persoon | 6448 | 21009 | Tjaerd baron van Aylva |
+| Entity | Legacy (Huygens URL) | Modern (pilot) | Naam / note |
+|--------|----------------------|----------------|-------------|
+| persoon | [6448](https://resources.huygens.knaw.nl/repertoriumambtsdragersambtenaren1428-1861/app/personen/6448) | **21510** | Tjaerd baron van Aylva (1712–1757). Extab id 6448 is unrelated (Berger). |
+| persoon | (earlier namesake) | **21009** | Tjaerd van Aylva (1644–1705) |
 
-Pilot check: `http://127.0.0.1:8000/static/index.html?person=21009`
+Pilot check: `http://127.0.0.1:8000/static/index.html?person=21510`
 
 ---
 

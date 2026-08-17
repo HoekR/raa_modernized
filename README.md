@@ -33,10 +33,11 @@ cursor raa-modernized.code-workspace
 | `notebooks/` | Jupyter workspace (explore phase) |
 | `output/` | Local scratch-tier fallback (gitignored; see `output/README.md`) |
 | `data_io/` | Manifest I/O and provenance helpers |
-| `web/` | FastAPI search API + static frontend |
+| `web/` | FastAPI search API + static frontend + SvelteKit UI (`web/ui/`) |
 | `scripts/import_release.py` | Load `extab.pkl` into Postgres |
-| `scripts/validation_rq_smoke.py` | Pilot baseline counts for [VALIDATION_RQS.md](docs/VALIDATION_RQS.md) |
+| `scripts/validation_rq_smoke.py` | Pilot baseline counts + X1–X5 for [VALIDATION_RQS.md](docs/VALIDATION_RQS.md) (`--assert`) |
 | `scripts/dev.sh` | **Local stack:** Postgres + import-if-empty + API (D-53) |
+| `Makefile` | `make check` / `make check-db` / `make smoke` |
 
 ## Web app (local)
 
@@ -53,6 +54,13 @@ cp data_manifest.local.toml.example data_manifest.local.toml  # edit tier root �
 ```
 
 Open http://127.0.0.1:8000 — personen, aanstellingen, instellingen, functies.
+
+**Checks**
+
+```bash
+make check       # unit tests (no DB)
+make check-db    # + RQ baselines and X1–X5 (Postgres must be up + imported)
+```
 
 <details>
 <summary>Manual steps (legacy / debugging)</summary>

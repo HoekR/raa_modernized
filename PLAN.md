@@ -1,19 +1,19 @@
 # RAA Modern Webapp Port Plan
 
-> **Active build track:** Milestone **B3** (historian validation + parity) → **B4** (harden pilot).  
+> **Active build track:** **C** (SvelteKit hybrid search + detail pages shipped; **C4** static pilot next). Legacy hit counts in VALIDATION_RQS remain async.  
 > **Roadmap:** [Milestones](#milestones-roadmap) · **Todos:** [checklist](#todos-living-checklist) · **Decisions:** [docs/MIGRATION_LOG.md](docs/MIGRATION_LOG.md) · **Legacy UX:** [LEGACY-UX.md](LEGACY-UX.md)
 
-### Current status (2026-07-17)
+### Current status (2026-08-16)
 
 
 | Area             | State                                                                                                                                                          |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 0 template | `dighum_web_template` bootstrapped                                                                                                                             |
-| Data import      | `extab.pkl` → Postgres; `divperioden` purged; shadow life dates + `search_display` + entity spans at import                                                    |
-| Search store     | **PostgreSQL pilot** — Milestone B gate passed; ES deferred                                                                                                    |
-| API              | Four contexts + suggest + detail endpoints                                                                                                                     |
-| UI               | Static HTML/JS pilot (SvelteKit still Phase 3 target)                                                                                                          |
-| Legacy parity    | **B2 shipped**; **B3** parity slices a–e shipped (f backlog); **historian matrix** Legacy columns still open → then **B4** |
+| Data import      | `extab.pkl` → Postgres; shadow life dates + `search_display` + entity spans                                                                                    |
+| Search store     | **PostgreSQL pilot** — ES deferred                                                                                                                             |
+| API              | Four contexts + suggest + detail + A–Z browse + expanded personen facets                                                                                         |
+| UI               | Static pilot + SvelteKit (`web/ui/`); personen = **basic search + facet sidebar**                                                                              |
+| Validation       | X1–X5 automated PASS; ID sample corrected (Huygens 6448 → pilot **21510**); Legacy hit counts still open                                                       |
 
 
 Update [docs/MIGRATION_LOG.md](docs/MIGRATION_LOG.md) when decisions or shipped work change.
@@ -29,8 +29,8 @@ Active track is still **Milestone B** (Postgres search pilot). Later letters map
 | **B1** | RAA vertical slice: import `extab.pkl`, four contexts, period modes, person detail | **done** 2026-07-12 | Facet latency OK; wildcard smoke OK → Postgres committed |
 | **B2** | Display names, shadow/EDTF life dates, entity detail/spans, `search_display` | **shipped** 2026-07-13/14 | See slices B2a–B2f below |
 | **B3** | Historian validation + remaining legacy parity | **parity shipped**; matrix open | B3a–e done; fill [VALIDATION_RQS.md](docs/VALIDATION_RQS.md) Legacy/Verdict; B3f backlog OK |
-| **B4** | Pilot hardening for shared use | **next** | Single `dev.sh` path; documented validation pass; no known P0 search bugs |
-| **C** | SvelteKit UI (replace static HTML/JS pilot) | planned (Phase 3) | Same API contracts; period + four contexts; facet/typeahead parity |
+| **B4** | Pilot hardening for shared use | **in progress** | `dev.sh` + `make check-db`; B4b after Huygens matrix |
+| **C** | SvelteKit UI (replace static HTML/JS pilot) | **in progress** (C1–C2) | `web/ui/`; C3 detail next |
 | **D** | Deploy read-only public pilot | planned (Phase 4) | Managed Postgres + API + static/SvelteKit; CI smoke |
 | **E** | Editorial amendments (toelichting first) | planned (Phase 5) | Edit → amendment table → search reflects; re-import merge without losing edits |
 
@@ -53,19 +53,25 @@ Check items off here when shipped; log decisions in [MIGRATION_LOG.md](docs/MIGR
 
 ### Now — B3
 
-- [ ] Fill Legacy / Δ / Verdict columns in [docs/VALIDATION_RQS.md](docs/VALIDATION_RQS.md) (Huygens vs pilot) — **human**
+- [ ] Fill Legacy **hit-count** cells in [docs/VALIDATION_RQS.md](docs/VALIDATION_RQS.md) (interactive Huygens forms) — **human, async OK**
 - [x] Run `uv run python scripts/validation_rq_smoke.py` and refresh pilot baselines if data changed
 - [x] **B3d** — aanstellingsdatum range filter on personen search
 - [x] **B3e** — A–Z browse UI (`GET /api/browse/{entity}/az`) on instellingen + functies
-- [ ] Document X1–X5 cross-cutting checks in VALIDATION_RQS / MIGRATION_LOG — **human spot-check**
-- [ ] Close B3 when ≥12/16 RQs pass (B3f may stay backlog)
+- [x] Document X1–X5 cross-cutting checks (automated in `validation_rq_smoke.py --assert`)
+- [ ] Close B3 when ≥12/16 RQs have Legacy counts compared (B3f may stay backlog)
 
-### Next — B4
+### Next — B4 / C
 
-- [ ] **B4a** — one-command local stack (`scripts/dev.sh`: Postgres + import-if-empty + API) — D-53
-- [ ] **B4b** — record historian validation pass in MIGRATION_LOG
-- [ ] **B4c** — CI / `make check` smoke (API up + a few RQ counts)
-- [ ] **B4d** — fix P0 search/display bugs found during B3 (no feature creep)
+- [x] **B4a** — one-command local stack (`scripts/dev.sh`) — D-53
+- [x] **B4b** (partial) — matrix documented + ID correction; Legacy counts async
+- [x] **B4c** — `make check` / `make check-db`
+- [x] **B4d** — baselines locked in `--assert`
+- [x] **C1** — SvelteKit scaffold against existing FastAPI contracts (`web/ui/`)
+- [x] **C2** — four contexts + period + typeahead/chips + A–Z
+- [x] **C2a** — personen hybrid UI: basic `q` + live facet sidebar + advanced filters (D-60)
+- [x] **C2b** — hybrid aanstellingen (+ facets); themed instellingen/functies browse
+- [x] **C3** — SvelteKit detail pages (persoon / instelling / functie) with theme
+- [ ] **C4** — retire static pilot
 
 ### Backlog (blocked or low priority)
 
@@ -124,7 +130,7 @@ flowchart LR
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime      | Python 2, Zope 2/3, SQLObject                                                                                                                                                                                 | Python 3.12, FastAPI                                                                                                                  |
 | Search store | MySQL + SQLObject queries                                                                                                                                                                                     | **TBD after Milestone B** — Postgres SQL facets (default pilot) or Elasticsearch; see [Search store decision](#search-store-decision) |
-| UI           | Server-rendered `.pt` templates                                                                                                                                                                               | SvelteKit with **faceted search** UI                                                                                                  |
+| UI           | Server-rendered `.pt` templates                                                                                                                                                                               | SvelteKit **hybrid**: basic search + live facet sidebar (+ advanced filters)                                                          |
 | Search logic | `[query.py](file:///Users/rikhoekstra/develop/RepertoriumAmbtenarenAmbtsdragers/src/raa/query.py)` + `[form.py](file:///Users/rikhoekstra/develop/RepertoriumAmbtenarenAmbtsdragers/src/raa/browser/form.py)` | Backend-agnostic query builder; legacy wildcard semantics preserved                                                                   |
 | Data source  | ETL → MySQL                                                                                                                                                                                                   | `[raa_convert](file:///Users/rikhoekstra/develop/raa_convert)` → `extab.pkl` → Postgres import (pilot) or ES index                    |
 | Period model | Not in legacy search UI                                                                                                                                                                                       | **Top-level period facet** + **overall (all-period) search**                                                                          |
@@ -601,27 +607,26 @@ Legacy AND/OR multi-select: per filter group where multiple values apply; same s
 
 Huygens public IDs ≠ pilot `persoon.id`. Known example: legacy **6448** → pilot **21009** (Tjaerd van Aylva). Do not use Huygens IDs in pilot deep links until concordance is imported. When ready: auxiliary mapping table at import + lookup/redirect (personen first).
 
-### Milestone B4 — Pilot hardening (**next**)
-
-After B3 close gate:
+### Milestone B4 — Pilot hardening (**in progress**)
 
 | Slice   | Scope | Status |
 | ------- | ----- | ------ |
-| **B4a** | One-command local stack (`scripts/dev.sh`: Postgres + import-if-empty + API) | open (D-53) |
-| **B4b** | Documented historian validation pass (filled [VALIDATION_RQS.md](docs/VALIDATION_RQS.md) + MIGRATION_LOG entry) | open |
-| **B4c** | Smoke script in CI or `make check` (API import + a few RQ counts) | open |
-| **B4d** | Fix P0 search/display bugs found during B3 (no feature creep) | open |
+| **B4a** | One-command local stack (`scripts/dev.sh`: Postgres + import-if-empty + API; compose or legacy `raa_pg`) | **shipped** 2026-08-16 (D-53) |
+| **B4b** | Documented historian validation pass (filled [VALIDATION_RQS.md](docs/VALIDATION_RQS.md) + MIGRATION_LOG entry) | open (needs Huygens fill) |
+| **B4c** | `make check` (unit) + `make check-db` / `validation_rq_smoke.py --assert` (RQ + X1–X5) | **shipped** 2026-08-16 |
+| **B4d** | Fix P0 search/display bugs found during B3 (no feature creep) | **shipped** — baselines locked; reopen if matrix finds P0 |
 
-**Close gate:** a second person can clone, run `dev.sh`, and reproduce the validation matrix without ad-hoc docker/cwd notes.
-
-### Milestone C — SvelteKit UI (Phase 3, after B4)
+**Close gate:** a second person can clone, run `dev.sh`, and reproduce the validation matrix without ad-hoc docker/cwd notes; Huygens Legacy columns filled.
+### Milestone C — SvelteKit UI (Phase 3, **in progress**)
 
 | Slice | Scope | Status |
 | ----- | ----- | ------ |
-| **C1** | Scaffold SvelteKit against existing FastAPI contracts | planned |
-| **C2** | Port four search contexts + period selector + typeahead/chips | planned |
-| **C3** | Port detail pages (persoon / instelling / functie) | planned |
-| **C4** | Retire static HTML/JS pilot (or keep as fallback) | planned |
+| **C1** | Scaffold SvelteKit (`web/ui/`) against existing FastAPI; home + personen search stub | **shipped** 2026-08-16 |
+| **C2** | Port four search contexts + period selector + typeahead/chips + A–Z browse | **shipped** 2026-08-16 |
+| **C3** | Port detail pages (persoon / instelling / functie) | open |
+| **C4** | Retire static HTML/JS pilot (or keep as fallback) | open |
+
+Run: API via `./scripts/dev.sh`, UI via `cd web/ui && npm install && npm run dev` → http://127.0.0.1:5173
 
 ### Milestone D — Deploy read-only (Phase 4)
 
@@ -1013,7 +1018,7 @@ Store overrides as YAML/JSON in `editorial/` at repo root (manifest-backed). Via
 
 See the [Todos checklist](#todos-living-checklist) for the authoritative open list.
 
-**Immediate (B3):** fill VALIDATION_RQS Legacy/Verdict (B3d/B3e shipped).  
-**Then (B4):** `dev.sh` + documented validation pass + smoke.  
-**Later:** C SvelteKit · D deploy · E editorial.
+**Immediate:** C3 (SvelteKit detail pages). Legacy hit counts in VALIDATION_RQS remain async.  
+**Then:** C4 retire static.  
+**Later:** D deploy · E editorial.
 

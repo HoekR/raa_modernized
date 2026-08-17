@@ -54,7 +54,7 @@ def test_format_corpus_witness_with_instelling():
     html = format_corpus_witness(1582, "Staten van Friesland", 100)
     assert "1582" in html
     assert "Staten van Friesland" in html
-    assert "instelling=100" in html
+    assert "/instellingen/100" in html
 
 
 def test_entity_profile_shape():

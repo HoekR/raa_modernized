@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="nl" data-theme="archive">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAA — Ambtenaren & Ambtsdragers</title>
+    <script>
+      try {
+        var t = localStorage.getItem('raa-color-theme');
+        if (t === 'copper' || t === 'green' || t === 'archive') {
+          document.documentElement.dataset.theme = t;
+        }
+      } catch (e) {}
+    </script>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

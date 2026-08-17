@@ -18,6 +18,7 @@ class SearchRequest(BaseModel):
     from_: int = Field(default=0, alias="from")
     size: int = Field(default=20, ge=1, le=100)
     sort: str = "geslachtsnaam"
+    sort_dir: str = Field(default="asc", pattern="^(asc|desc)$")
     group_by: str | None = Field(default=None, pattern="^(instelling|functie)$")
     functie_match: str = Field(default="any", pattern="^(any|all)$")
     instelling_match: str = Field(default="any", pattern="^(any|all)$")
