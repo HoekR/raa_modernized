@@ -24,6 +24,10 @@
   --raa-wash-b: hsl(200 25% 88% / 0.5);
   --raa-chip-border: #a8c5d6;
   --raa-danger: #9b1c1c;
+  --raa-period-me: #5a8a7a;
+  --raa-period-republiek: #2f6f8f;
+  --raa-period-batfra: #b8860b;
+  --raa-period-negentiende: #5c6b7a;
 }
 
 [data-theme='copper'] {
@@ -627,6 +631,40 @@ tbody tr:hover {
   width: 100%;
 }
 
+.q-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.q-mode {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.15rem 0.35rem;
+  min-width: auto;
+  max-width: 9rem;
+}
+
+.name-parts-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+}
+
+.name-parts-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.name-parts-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
 .search-toolbar .az-inline {
   margin: 0;
   align-self: center;
@@ -899,17 +937,24 @@ tbody tr.row-selected {
   width: 100%;
 }
 
-td.name-cell,
-.name-cell {
+td.name-cell {
+  /* Keep table cell display so column widths stay stable across nested tables. */
+  vertical-align: middle;
+}
+
+td.name-cell .name-cell-inner {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  min-width: 0;
 }
 
-td.name-cell > a,
-.name-cell > a {
+td.name-cell .name-cell-inner > a {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .preview-icon {
@@ -1017,4 +1062,81 @@ td.name-cell > a,
   font-size: 0.85rem;
   color: var(--raa-ink-muted);
   background: var(--raa-accent-softer);
+}
+
+/* ——— Graph overview (14e) ——— */
+.overview-page {
+  max-width: var(--raa-max-detail);
+  margin: 0 auto;
+}
+
+.overview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.overview-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--raa-ink-faint);
+}
+
+.overview-meta {
+  margin-bottom: 1rem;
+}
+
+.query-summary {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--raa-ink-muted);
+}
+
+.query-summary li {
+  margin: 0.15rem 0;
+}
+
+.overview-charts .year-histogram .bars {
+  height: 8.5rem;
+  padding-bottom: 0.35rem;
+}
+
+.overview-charts .year-histogram.wide .bar-col,
+.overview-charts .year-histogram.wide .bar-btn,
+.overview-charts .year-histogram.wide .bar-static {
+  flex: 0 0 1.35rem;
+  min-width: 1.35rem;
+  max-width: none;
+}
+
+.overview-charts .year-histogram.wide .bar-lab {
+  font-size: 0.58rem;
+  max-height: none;
+  white-space: nowrap;
+}
+
+.overview-charts .facet-summary {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.overview-footnotes {
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--raa-ink-faint);
+}
+
+.overview-footnotes p {
+  margin: 0.35rem 0;
+}
+
+.search-toolbar a.btn-ghost {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }

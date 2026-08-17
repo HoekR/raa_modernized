@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { apiGet, apiPost } from './api';
 import { periodKey, periodMode, periodParam, type PeriodCount, type SuggestItem } from './period';
-import type { BrowseResponse, SearchResponse } from './period';
+import type { BrowseResponse, SearchResponse, SummaryResponse } from './period';
 
 export function periodBodyFields() {
   return {
@@ -28,6 +28,16 @@ export async function searchEntity(
   body: Record<string, unknown>
 ): Promise<SearchResponse> {
   return apiPost<SearchResponse>(`/api/search/${entity}`, {
+    ...periodBodyFields(),
+    ...body,
+  });
+}
+
+export async function searchSummary(
+  entity: 'personen' | 'aanstellingen',
+  body: Record<string, unknown>
+): Promise<SummaryResponse> {
+  return apiPost<SummaryResponse>(`/api/search/${entity}/summary`, {
     ...periodBodyFields(),
     ...body,
   });
@@ -67,6 +77,18 @@ export function personName(row: Record<string, unknown>): string {
   return [row.voornaam, row.tussenvoegsel, row.geslachtsnaam].filter(Boolean).join(' ');
 }
 
+const LIFE_YEAR_MIN = 1400;
+const LIFE_YEAR_MAX = 1920;
+
+function parseLeadingYear(text: string): number | null {
+  const match = text.match(/^(\d{1,4})/);
+  return match ? Number(match[1]) : null;
+}
+
+function isPlausibleLifeYear(year: number | null): boolean {
+  return year != null && year >= LIFE_YEAR_MIN && year <= LIFE_YEAR_MAX;
+}
+
 export function lifeCell(
   row: Record<string, unknown>,
   kind: 'geboorte' | 'overlijden'
@@ -74,9 +96,17 @@ export function lifeCell(
   const display = kind === 'geboorte' ? row.geboortedatum_als_bekend : row.overlijdensdatum_als_bekend;
   const lifeYear = kind === 'geboorte' ? row.life_start_year : row.life_end_year;
   const lifeSource = kind === 'geboorte' ? row.life_start_source : row.life_end_source;
-  const text = display != null ? String(display).trim() : '';
+  const lifeEdtf = kind === 'geboorte' ? row.life_start_edtf : row.life_end_edtf;
+  let text = display != null ? String(display).trim() : '';
+  const leadingYear = text ? parseLeadingYear(text) : null;
+  if (text && leadingYear != null && !isPlausibleLifeYear(leadingYear)) {
+    text = '';
+  }
   if (!text) {
     if (lifeSource === 'shadow' && lifeYear != null && lifeYear !== '') {
+      if (kind === 'overlijden' && typeof lifeEdtf === 'string' && lifeEdtf.startsWith('>')) {
+        return { text: lifeEdtf, estimated: true };
+      }
       return { text: String(lifeYear), estimated: true };
     }
     return { text: '—', estimated: false };

@@ -2,9 +2,10 @@
 # Self-contained local dev stack: Postgres (compose) + optional import + FastAPI.
 # Usage:
 #   ./scripts/dev.sh              start DB (if needed), import when empty, run API
-#   ./scripts/dev.sh --import     re-import extab before starting API
+#   ./scripts/dev.sh --import     re-import extab, then start API (stop any running dev.sh first)
+#   ./scripts/dev.sh --import-only  re-import only; does not start API
 #   ./scripts/dev.sh --db-only    start Postgres only
-#   ./scripts/dev.sh --import-only
+# Editorial admin: web/admin (npm run dev → :5174); [editorial] in config.local.toml — see docs/EDITORIAL.md
 #   ./scripts/dev.sh --prod       Gunicorn + Uvicorn workers (no reload; D-54)
 #   ./scripts/dev.sh stop         docker compose down (keeps volume)
 set -euo pipefail

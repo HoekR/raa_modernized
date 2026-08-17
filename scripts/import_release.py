@@ -110,10 +110,35 @@ def purge_divperioden(extab: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]
     return cleaned
 
 
-def import_tables(extab: dict[str, pd.DataFrame], engine, release_id: str) -> None:
+def prepare_extab(extab: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Gate, validate, enrich — shared by staging load and direct import."""
     from raa_life_dates.shadow import enrich_persoon_life_dates
     from raa_entity_spans.spans import build_functie_attestation, build_functie_instelling_span
     from raa_search_display.shadow import enrich_persoon_search_display
+
+    if "persoon" in extab and "aanstelling" in extab:
+        from raa_life_dates.institutional_gate import apply_institutional_date_gate
+
+        print("Applying institutional date gate (dated van required)...")
+        extab, gate_stats = apply_institutional_date_gate(extab)
+        for key, count in gate_stats.items():
+            if count:
+                print(f"  {key}: dropped {count}")
+
+    if "persoon" in extab and "aanstelling" in extab:
+        from raa_life_dates.validate import audit_implausible_recorded_dates, sanitize_implausible_recorded_dates
+
+        flagged = audit_implausible_recorded_dates(extab["persoon"])
+        if flagged:
+            print(
+                f"  implausible life dates: {len(flagged)} person(s) flagged "
+                f"(e.g. id {flagged[0]['id']}: {flagged[0]['issues']})"
+            )
+        extab = dict(extab)
+        extab["persoon"], date_stats = sanitize_implausible_recorded_dates(extab["persoon"])
+        for key, count in date_stats.items():
+            if count:
+                print(f"  {key}: cleared {count}")
 
     if "persoon" in extab and "aanstelling" in extab:
         print("Enriching persoon with EDTF + shadow life-date columns...")
@@ -138,71 +163,95 @@ def import_tables(extab: dict[str, pd.DataFrame], engine, release_id: str) -> No
         extab["functie_attestation"] = build_functie_attestation(
             span, extab["aanstelling"], extab["instelling"]
         )
+    return extab
+
+
+STAGING_SCHEMA = "raa_staging"
+
+
+def _write_tables(conn, schema: str, extab: dict[str, pd.DataFrame], release_id: str) -> None:
+    conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+    for table in TABLE_ORDER:
+        if table not in extab:
+            continue
+        frame = extab[table].copy()
+        frame["import_release_id"] = release_id
+        frame.to_sql(
+            table,
+            conn,
+            schema=schema,
+            if_exists="replace",
+            index=False,
+            method="multi",
+            chunksize=500,
+        )
+
+
+def _ensure_raa_indexes(conn) -> None:
+    conn.execute(
+        text("CREATE INDEX IF NOT EXISTS idx_persoon_searchable ON raa.persoon (searchable)")
+    )
+    conn.execute(
+        text("CREATE INDEX IF NOT EXISTS idx_persoon_search_display ON raa.persoon (search_display)")
+    )
+    conn.execute(
+        text("CREATE INDEX IF NOT EXISTS idx_persoon_geslachtsnaam ON raa.persoon (geslachtsnaam)")
+    )
+    conn.execute(
+        text("CREATE INDEX IF NOT EXISTS idx_aanstelling_persoon ON raa.aanstelling (persoon_id)")
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_persoon_life_years "
+            "ON raa.persoon (life_start_year, life_end_year)"
+        )
+    )
+    conn.execute(
+        text("CREATE INDEX IF NOT EXISTS idx_persoon_geboorte_year ON raa.persoon (geboorte_year)")
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_functie_span_functie "
+            "ON raa.functie_instelling_span (functie_id)"
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_functie_span_instelling "
+            "ON raa.functie_instelling_span (instelling_id)"
+        )
+    )
+
+
+def import_tables(extab: dict[str, pd.DataFrame], engine, release_id: str) -> None:
+    extab = prepare_extab(extab)
+
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "api"))
+    from raa_api.editorial_merge import merge_release_into_raa
 
     with engine.begin() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS raa"))
-        for table in TABLE_ORDER:
-            if table not in extab:
-                continue
-            frame = extab[table].copy()
-            frame["import_release_id"] = release_id
-            frame.to_sql(
-                table,
-                conn,
-                schema="raa",
-                if_exists="replace",
-                index=False,
-                method="multi",
-                chunksize=500,
-            )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_persoon_searchable "
-                "ON raa.persoon (searchable)"
-            )
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_persoon_search_display "
-                "ON raa.persoon (search_display)"
-            )
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_persoon_geslachtsnaam "
-                "ON raa.persoon (geslachtsnaam)"
-            )
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_aanstelling_persoon "
-                "ON raa.aanstelling (persoon_id)"
-            )
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_persoon_life_years "
-                "ON raa.persoon (life_start_year, life_end_year)"
-            )
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_persoon_geboorte_year "
-                "ON raa.persoon (geboorte_year)"
-            )
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_functie_span_functie "
-                "ON raa.functie_instelling_span (functie_id)"
-            )
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS idx_functie_span_instelling "
-                "ON raa.functie_instelling_span (instelling_id)"
-            )
-        )
+        print(f"Loading staging schema ({STAGING_SCHEMA})...")
+        _write_tables(conn, STAGING_SCHEMA, extab, release_id)
+
+    print("Merging staging → raa (editorial amendments preserved)...")
+    stats = merge_release_into_raa(engine, release_id)
+    print(f"  merge: {stats['tables']} tables, {stats['conflicts']} conflict(s) recorded")
+
+    with engine.begin() as conn:
+        _ensure_raa_indexes(conn)
+
+
+def import_tables_legacy_replace(extab: dict[str, pd.DataFrame], engine, release_id: str) -> None:
+    """Direct replace without merge — used only if staging merge unavailable."""
+    extab = prepare_extab(extab)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS raa"))
+        _write_tables(conn, "raa", extab, release_id)
+        _ensure_raa_indexes(conn)
 
 
 def main() -> None:

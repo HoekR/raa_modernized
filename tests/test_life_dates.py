@@ -52,6 +52,98 @@ def test_derive_life_edtf_year_only_with_approx():
     assert oy is None
 
 
+def test_parse_edtf_open_after_point():
+    assert parse_edtf_interval(">1770") == YearInterval(1770, None)
+
+
+def test_shadow_death_uses_last_tot_for_search_and_open_edtf_for_display():
+    persoon = pd.DataFrame(
+        [
+            {
+                "id": 1,
+                "geboortedatum": pd.NA,
+                "geboortejaar": pd.NA,
+                "geboortemaand": pd.NA,
+                "geboortedag": pd.NA,
+                "onbepaaldgeboortedatum": 0,
+                "geboortedatum_als_bekend": "",
+                "overlijdensdatum": pd.NA,
+                "overlijdensjaar": pd.NA,
+                "overlijdensmaand": pd.NA,
+                "overlijdensdag": pd.NA,
+                "onbepaaldoverlijdensdatum": 0,
+                "overlijdensdatum_als_bekend": "",
+            }
+        ]
+    )
+    aanst = pd.DataFrame(
+        [
+            {"persoon_id": 1, "van": "1800-01-01", "tot": "1770-12-31"},
+            {"persoon_id": 1, "van": "1750-01-01", "tot": "1765-12-31"},
+        ]
+    )
+    row = enrich_persoon_life_dates(persoon, aanst).iloc[0]
+    assert row["life_end_source"] == "shadow"
+    assert row["life_end_year"] == 1770
+    assert row["life_end_edtf"] == ">1770"
+
+
+def test_shadow_death_skipped_without_tot():
+    persoon = pd.DataFrame(
+        [
+            {
+                "id": 1,
+                "geboortedatum": pd.NA,
+                "geboortejaar": pd.NA,
+                "geboortemaand": pd.NA,
+                "geboortedag": pd.NA,
+                "onbepaaldgeboortedatum": 0,
+                "geboortedatum_als_bekend": "",
+                "overlijdensdatum": pd.NA,
+                "overlijdensjaar": pd.NA,
+                "overlijdensmaand": pd.NA,
+                "overlijdensdag": pd.NA,
+                "onbepaaldoverlijdensdatum": 0,
+                "overlijdensdatum_als_bekend": "",
+            }
+        ]
+    )
+    aanst = pd.DataFrame([{"persoon_id": 1, "van": "1750-01-01", "tot": None}])
+    row = enrich_persoon_life_dates(persoon, aanst).iloc[0]
+    assert row["life_end_source"] is None
+    assert pd.isna(row["life_end_year"])
+    assert row["life_end_edtf"] is None or pd.isna(row["life_end_edtf"])
+
+
+def test_shadow_death_after_last_appointment():
+    persoon = pd.DataFrame(
+        [
+            {
+                "id": 1,
+                "geboortedatum": pd.NA,
+                "geboortejaar": pd.NA,
+                "geboortemaand": pd.NA,
+                "geboortedag": pd.NA,
+                "onbepaaldgeboortedatum": 0,
+                "geboortedatum_als_bekend": "",
+                "overlijdensdatum": pd.NA,
+                "overlijdensjaar": pd.NA,
+                "overlijdensmaand": pd.NA,
+                "overlijdensdag": pd.NA,
+                "onbepaaldoverlijdensdatum": 0,
+                "overlijdensdatum_als_bekend": "",
+            }
+        ]
+    )
+    aanst = pd.DataFrame(
+        [{"persoon_id": 1, "van": "1750-01-01", "tot": "1770-12-31"}]
+    )
+    row = enrich_persoon_life_dates(persoon, aanst).iloc[0]
+    assert row["life_end_source"] == "shadow"
+    assert row["life_end_year"] == 1770
+    assert row["life_end_edtf"] == ">1770"
+
+
 @pytest.mark.skipif(
     not Path.home().joinpath("develop/raa_convert/extab.pkl").exists(),
     reason="extab.pkl not available",

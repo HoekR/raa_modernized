@@ -1,24 +1,55 @@
 <script lang="ts">
+  import { goto, replaceState } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import ActiveChips from '$lib/components/ActiveChips.svelte';
   import AzBrowser from '$lib/components/AzBrowser.svelte';
   import ChipSuggest from '$lib/components/ChipSuggest.svelte';
   import Drawer from '$lib/components/Drawer.svelte';
   import FacetPanel from '$lib/components/FacetPanel.svelte';
+  import SummaryPanel from '$lib/components/SummaryPanel.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import PersoonHoverPreview from '$lib/components/PersoonHoverPreview.svelte';
   import PersoonPreviewIcon from '$lib/components/PersoonPreviewIcon.svelte';
   import SortPills from '$lib/components/SortPills.svelte';
   import StandAdel from '$lib/components/StandAdel.svelte';
-  import { MAX_CHIPS, PAGE_SIZE, periodKey, type FacetValue, type SuggestItem } from '$lib/period';
-  import { lifeCell, listingName, searchEntity } from '$lib/search';
+  import YearHistogram from '$lib/components/YearHistogram.svelte';
+  import { MAX_CHIPS, pageSize, periodKey, periodMode, type FacetValue, type SuggestItem } from '$lib/period';
+  import { lifeCell, listingName, loadStands, searchEntity } from '$lib/search';
+  import {
+    geboorteEdtfRange,
+    timelineChartTitle,
+    timelineFilterYears,
+    type TimelineBin,
+    type TimelineMeta,
+    type YearCount,
+  } from '$lib/yearHistogram';
   import { HoverPreviewController, createPersoonPreviewHandlers } from '$lib/hoverPreview';
   import { SearchRunGuard } from '$lib/searchRunner';
+  import { fetchFunctie, fetchInstelling } from '$lib/detail';
+  import {
+    applyPeriodFromParams,
+    parsePersonenParams,
+    parseAanstellingenParams,
+    resolveSuggestItems,
+    edtfRangeChipLabel,
+    aanstellingDateChipLabel,
+    EMPTY_NAME_PARTS,
+    namePartChipLabel,
+    personenFilters,
+    personenListPath,
+    type NameSearchMode,
+    type PersonenNameParts,
+    type PersonenSearchState,
+  } from '$lib/searchUrl';
+  import { patchOverviewPersonen, saveOverviewSnapshot } from '$lib/overviewStore';
 
   const searchGuard = new SearchRunGuard();
   const hoverCtl = new HoverPreviewController();
   const preview = createPersoonPreviewHandlers({
     hoverCtl,
-    isBlocked: () => refineOpen,
+    isBlocked: () => refineOpen || summaryOpen || naamOpen,
     getActiveId: () => hoverPersonId,
     show: (id, top) => {
       hoverPersonId = id;
@@ -30,6 +61,8 @@
   });
 
   let q = $state('');
+  let qMode = $state<NameSearchMode>('prefix');
+  let nameParts = $state<PersonenNameParts>({ ...EMPTY_NAME_PARTS });
   let letter = $state<string | null>(null);
   let geboorte = $state('');
   let overlijden = $state('');
@@ -50,31 +83,92 @@
   let sortDir = $state<'asc' | 'desc'>('asc');
   let offset = $state(0);
   let refineOpen = $state(false);
+  let naamOpen = $state(false);
+  let summaryOpen = $state(false);
   let hoverPersonId = $state<number | null>(null);
   let hoverTop = $state(0);
 
   let total = $state<number | null>(null);
   let hits = $state<Record<string, unknown>[]>([]);
   let facets = $state<Record<string, FacetValue[]>>({});
+  let timeline = $state<YearCount[]>([]);
+  let timelineMeta = $state<TimelineMeta | null>(null);
   let error = $state<string | null>(null);
   let loading = $state(false);
   let hasSearched = $state(false);
 
+  function personenUrlState(): PersonenSearchState {
+    return {
+      q,
+      qMode,
+      nameParts,
+      letter,
+      geboorte,
+      overlijden,
+      van,
+      tot,
+      dateMode,
+      functieIds: functies.map((f) => f.id),
+      instellingIds: instellingen.map((i) => i.id),
+      provincieIds: provincies.map((p) => p.id),
+      regioIds: regions.map((r) => r.id),
+      lokalIds: lokalen.map((l) => l.id),
+      standIds,
+      adel: adelOnly,
+      functieMatch,
+      instellingMatch,
+    };
+  }
+
+  async function seedFromUrl() {
+    const params = $page.url.searchParams;
+    if (!params.toString()) return;
+    const parsed = parsePersonenParams(params);
+    const period = applyPeriodFromParams(params);
+    if (period && period !== get(periodKey)) periodKey.set(period);
+    q = parsed.q;
+    qMode = parsed.qMode;
+    nameParts = { ...parsed.nameParts };
+    letter = parsed.letter;
+    geboorte = parsed.geboorte;
+    overlijden = parsed.overlijden;
+    van = parsed.van;
+    tot = parsed.tot;
+    dateMode = parsed.dateMode;
+    adelOnly = parsed.adel;
+    functieMatch = parsed.functieMatch;
+    instellingMatch = parsed.instellingMatch;
+    standIds = parsed.standIds;
+    const [functieItems, instellingItems, stands] = await Promise.all([
+      resolveSuggestItems(fetchFunctie, parsed.functieIds),
+      resolveSuggestItems(fetchInstelling, parsed.instellingIds),
+      loadStands(),
+    ]);
+    functies = functieItems;
+    instellingen = instellingItems;
+    for (const stand of stands) {
+      if (parsed.standIds.includes(stand.id)) {
+        standLabels = { ...standLabels, [stand.id]: stand.naam };
+      }
+    }
+  }
+
+  function openOverview() {
+    if (total === null) return;
+    saveOverviewSnapshot({
+      entity: 'personen',
+      period: get(periodKey),
+      personen: personenUrlState(),
+      total,
+      facets,
+      timeline,
+      timelineMeta,
+    });
+    goto('/personen/overzicht');
+  }
+
   function buildFilters(): Record<string, string[]> {
-    const filters: Record<string, string[]> = {};
-    if (functies.length) filters.functie_id = functies.map((f) => String(f.id));
-    if (instellingen.length) filters.instelling_id = instellingen.map((i) => String(i.id));
-    if (provincies.length) filters.provincie_id = provincies.map((p) => String(p.id));
-    if (regions.length) filters.regio_id = regions.map((r) => String(r.id));
-    if (lokalen.length) filters.lokaal_id = lokalen.map((l) => String(l.id));
-    if (standIds.length) filters.stand_id = standIds.map(String);
-    if (adelOnly) filters.adel = ['1'];
-    if (geboorte.trim()) filters.geboorte = [geboorte.trim()];
-    if (overlijden.trim()) filters.overlijden = [overlijden.trim()];
-    if (van.trim()) filters.van = [van.trim()];
-    if (tot.trim()) filters.tot = [tot.trim()];
-    if (letter) filters.letter = [letter];
-    return filters;
+    return personenFilters(personenUrlState());
   }
 
   function selectedFacetKeys(): Record<string, string[]> {
@@ -125,6 +219,13 @@
     runSearch();
   }
 
+  function commitListState() {
+    const period = get(periodKey);
+    const state = personenUrlState();
+    replaceState(personenListPath(state, period), {});
+    patchOverviewPersonen(state, period);
+  }
+
   async function runSearch() {
     const token = searchGuard.begin();
     loading = true;
@@ -132,12 +233,13 @@
     try {
       const data = await searchEntity('personen', {
         q: q.trim() || null,
+        q_mode: qMode,
         filters: buildFilters(),
         functie_match: functieMatch,
         instelling_match: instellingMatch,
         include_shadow_dates: dateMode !== 'exact',
         from: offset,
-        size: PAGE_SIZE,
+        size: get(pageSize),
         sort,
         sort_dir: sortDir,
       });
@@ -145,13 +247,18 @@
       total = data.total;
       hits = data.hits;
       facets = data.facets ?? {};
+      timeline = data.timeline ?? [];
+      timelineMeta = data.timeline_meta ?? null;
       hasSearched = true;
+      commitListState();
     } catch (e) {
       if (!searchGuard.isCurrent(token)) return;
       error = e instanceof Error ? e.message : String(e);
       total = null;
       hits = [];
       facets = {};
+      timeline = [];
+      timelineMeta = null;
     } finally {
       if (searchGuard.isCurrent(token)) loading = false;
     }
@@ -162,6 +269,32 @@
     offset = 0;
     runSearch();
   }
+
+  function onPageChange(o: number) {
+    offset = o;
+    runSearch();
+  }
+
+  function onPageSizeChange(n: number) {
+    pageSize.set(n);
+    offset = 0;
+    runSearch();
+  }
+
+  function onTimelineSelect(year: number, period?: string) {
+    if (!timelineMeta) return;
+    const { from, to } = timelineFilterYears(year, timelineMeta.bin as TimelineBin);
+    geboorte = geboorteEdtfRange(from, to);
+    offset = 0;
+    if (period && period !== get(periodKey)) {
+      periodKey.set(period);
+    } else {
+      runSearch();
+    }
+  }
+
+  const includeShadowDates = $derived(dateMode !== 'exact');
+  const timelineTitle = $derived(timelineChartTitle('personen', includeShadowDates));
 
   function clearFilters() {
     functies = [];
@@ -175,6 +308,7 @@
     overlijden = '';
     van = '';
     tot = '';
+    nameParts = { ...EMPTY_NAME_PARTS };
     offset = 0;
     runSearch();
   }
@@ -182,6 +316,22 @@
   function hideHover() {
     preview.hideNow();
   }
+
+  function applyNameParts() {
+    offset = 0;
+    naamOpen = false;
+    runSearch();
+  }
+
+  const qModeHint = $derived(
+    qMode === 'prefix'
+      ? 'Begint met — bijv. aylva'
+      : qMode === 'contains'
+        ? 'Bevat — substring in naamvelden'
+        : qMode === 'exact'
+          ? 'Exact — hele veldwaarde (hoofdletterongevoelig)'
+          : 'Patroon — wildcards * en ?'
+  );
 
   const activeChips = $derived.by(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
@@ -248,17 +398,81 @@
         });
       }
     }
+    if (geboorte.trim()) {
+      chips.push({
+        key: 'geboorte',
+        label: edtfRangeChipLabel('Geboorte', geboorte),
+        clear: () => {
+          geboorte = '';
+          offset = 0;
+          runSearch();
+        },
+      });
+    }
+    for (const key of Object.keys(nameParts) as (keyof PersonenNameParts)[]) {
+      const value = nameParts[key].trim();
+      if (!value) continue;
+      chips.push({
+        key: `name-${key}`,
+        label: namePartChipLabel(key, value),
+        clear: () => {
+          nameParts = { ...nameParts, [key]: '' };
+          offset = 0;
+          runSearch();
+        },
+      });
+    }
+    if (overlijden.trim()) {
+      chips.push({
+        key: 'overlijden',
+        label: edtfRangeChipLabel('Overlijden', overlijden),
+        clear: () => {
+          overlijden = '';
+          offset = 0;
+          runSearch();
+        },
+      });
+    }
+    const aanstLabel = aanstellingDateChipLabel(van, tot);
+    if (aanstLabel) {
+      chips.push({
+        key: 'aanstelling-dates',
+        label: aanstLabel,
+        clear: () => {
+          van = '';
+          tot = '';
+          offset = 0;
+          runSearch();
+        },
+      });
+    }
     return chips;
   });
 
-  $effect(() => {
-    void $periodKey;
-    offset = 0;
-    runSearch();
+  onMount(() => {
+    let searchReady = false;
+    let lastPeriod = get(periodKey);
+
+    void (async () => {
+      await seedFromUrl();
+      lastPeriod = get(periodKey);
+      offset = 0;
+      await runSearch();
+      searchReady = true;
+    })();
+
+    const unsub = periodKey.subscribe((p) => {
+      if (!searchReady || p === lastPeriod) return;
+      lastPeriod = p;
+      offset = 0;
+      runSearch();
+    });
+
+    return unsub;
   });
 
   $effect(() => {
-    if (refineOpen) hideHover();
+    if (refineOpen || summaryOpen || naamOpen) hideHover();
   });
 </script>
 
@@ -279,10 +493,26 @@
   >
     <div class="search-toolbar-left">
       <label class="q">
-        Naam (wildcards * ?)
-        <input bind:value={q} placeholder="bijv. aylva" />
+        <span class="q-label-row">
+          <span>Naam</span>
+          <select class="q-mode" bind:value={qMode} aria-label="Naam zoekmodus">
+            <option value="prefix">Begint met</option>
+            <option value="contains">Bevat</option>
+            <option value="pattern">Patroon (* ?)</option>
+            <option value="exact">Exact</option>
+          </select>
+        </span>
+        <input bind:value={q} placeholder={qModeHint} />
       </label>
       <button type="submit" disabled={loading}>{loading ? 'Zoeken…' : 'Zoeken'}</button>
+      <button
+        type="button"
+        class="btn-ghost"
+        class:active={naamOpen}
+        onclick={() => (naamOpen = !naamOpen)}
+      >
+        Naam onderdelen ▾
+      </button>
       <AzBrowser
         entity="personen"
         compact
@@ -294,6 +524,18 @@
         }}
       />
     </div>
+    <button
+      type="button"
+      class="btn-ghost"
+      class:active={summaryOpen}
+      disabled={!hasSearched}
+      onclick={() => (summaryOpen = !summaryOpen)}
+    >
+      Samenvatting
+    </button>
+    {#if hasSearched}
+      <button type="button" class="btn-ghost" onclick={openOverview}>Overzicht →</button>
+    {/if}
     <button
       type="button"
       class="btn-ghost"
@@ -327,8 +569,27 @@
             runSearch();
           }}
         />
-        <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+        <Pagination
+          {total}
+          {offset}
+          pageSize={$pageSize}
+          onpage={onPageChange}
+          {onPageSizeChange}
+        />
       </div>
+      {#if timeline.length > 0 && timelineMeta}
+        <YearHistogram
+          compact
+          title={timelineTitle}
+          bins={timeline}
+          bin={timelineMeta.bin}
+          stacked={timelineMeta.stacked ?? false}
+          entity="personen"
+          includeShadowDates={includeShadowDates}
+          undated={timelineMeta.undated}
+          onselect={onTimelineSelect}
+        />
+      {/if}
       <table>
         <thead>
           <tr>
@@ -344,12 +605,14 @@
             {@const id = Number(row.id)}
             <tr>
               <td class="name-cell">
-                <a href="/personen/{row.id}">{listingName(row)}</a>
-                <PersoonPreviewIcon
-                  ontrigger={(e) => preview.showPreview(e, id)}
-                  onrelease={preview.hidePreviewSoon}
-                  onclick={(e) => preview.togglePreview(e, id)}
-                />
+                <div class="name-cell-inner">
+                  <a href="/personen/{row.id}">{listingName(row)}</a>
+                  <PersoonPreviewIcon
+                    ontrigger={(e) => preview.showPreview(e, id)}
+                    onrelease={preview.hidePreviewSoon}
+                    onclick={(e) => preview.togglePreview(e, id)}
+                  />
+                </div>
               </td>
               <td class="date">
                 <span
@@ -360,14 +623,20 @@
               <td class="date">
                 <span
                   class:estimated={ovl.estimated}
-                  title={ovl.estimated ? 'Geschat uit aanstellingen' : undefined}>{ovl.text}</span
+                  title={ovl.estimated ? 'Overlijden onbekend; na laatste aanstelling' : undefined}>{ovl.text}</span
                 >
               </td>
             </tr>
           {/each}
         </tbody>
       </table>
-      <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+      <Pagination
+        {total}
+        {offset}
+        pageSize={$pageSize}
+        onpage={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   {/if}
 </section>
@@ -424,6 +693,34 @@
     <button type="button" class="primary" onclick={submit} disabled={loading}>Filters toepassen</button>
   </div>
 </Drawer>
+
+<Drawer bind:open={naamOpen} title="Naam onderdelen">
+  <p class="hint name-parts-hint">
+    Zoek per veld (wildcards <code>*</code> <code>?</code> toegestaan). Ingevulde velden worden gecombineerd met <strong>en</strong>.
+  </p>
+  <div class="name-parts-grid">
+    <label>Geslachtsnaam <input bind:value={nameParts.geslachtsnaam} placeholder="bijv. Aylva" /></label>
+    <label>Voornaam <input bind:value={nameParts.voornaam} placeholder="bijv. Tjaerd" /></label>
+    <label>Tussenvoegsel <input bind:value={nameParts.tussenvoegsel} placeholder="bijv. van" /></label>
+    <label>Naamsvariant <input bind:value={nameParts.alias} placeholder="alias" /></label>
+    <label>Heerlijkheid <input bind:value={nameParts.heerlijkheid} placeholder="bijv. Oldeboorn" /></label>
+  </div>
+  <button type="button" class="primary" onclick={applyNameParts} disabled={loading}>Zoeken</button>
+</Drawer>
+
+<SummaryPanel
+  bind:open={summaryOpen}
+  entity="personen"
+  facets={facets}
+  periodMode={$periodMode}
+  {hasSearched}
+  {total}
+  {timeline}
+  {timelineMeta}
+  includeShadowDates={includeShadowDates}
+  onselect={onFacetToggle}
+  {onTimelineSelect}
+/>
 
 <PersoonHoverPreview
   open={hoverPersonId != null}

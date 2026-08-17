@@ -239,6 +239,10 @@
     max-width: var(--raa-max-detail);
   }
 
+  :global(.site-main:has(.overview-page)) {
+    max-width: var(--raa-max-detail);
+  }
+
   :global(.site-header .period-select) {
     color: #f0f0f0;
   }

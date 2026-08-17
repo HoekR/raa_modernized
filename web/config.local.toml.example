@@ -6,3 +6,9 @@ api_port = 8000
 
 [data]
 extab_logical = "raa_extab"
+
+[editorial]
+enabled = true
+api_key = "change-me-in-config.local.toml"
+editor_id = "editor"
+cors_origins = ["http://localhost:5174", "http://127.0.0.1:5174"]

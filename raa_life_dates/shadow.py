@@ -7,29 +7,32 @@ import pandas as pd
 from raa_life_dates.edtf import derive_life_edtf
 
 BIRTH_OFFSET_YEARS = 34
-DEATH_PADDING_YEARS = 22
 
 
 def _appointment_year_bounds(aanstelling: pd.DataFrame) -> pd.DataFrame:
+    """Per-person van/tot year anchors for shadow life dates."""
+    from raa_life_dates.institutional_gate import appointment_tot_year, appointment_van_year
+
     grouped = aanstelling.groupby("persoon_id", dropna=False)
     rows: list[dict] = []
     for persoon_id, frame in grouped:
-        years: list[int] = []
-        for col in ("van", "tot"):
-            if col not in frame.columns:
-                continue
-            for value in frame[col]:
-                if value is None or (isinstance(value, float) and pd.isna(value)):
-                    continue
-                try:
-                    years.append(int(pd.Period(str(value), freq="D").year))
-                except (ValueError, TypeError):
-                    continue
-        if not years:
+        van_years = [
+            y for y in (appointment_van_year(v) for v in frame.get("van", [])) if y is not None
+        ]
+        tot_years = [
+            y for y in (appointment_tot_year(v) for v in frame.get("tot", [])) if y is not None
+        ]
+        if not van_years and not tot_years:
             continue
-        rows.append({"persoon_id": persoon_id, "aanst_min_year": min(years), "aanst_max_year": max(years)})
+        rows.append(
+            {
+                "persoon_id": persoon_id,
+                "aanst_min_van_year": min(van_years) if van_years else None,
+                "aanst_max_tot_year": max(tot_years) if tot_years else None,
+            }
+        )
     if not rows:
-        return pd.DataFrame(columns=["persoon_id", "aanst_min_year", "aanst_max_year"])
+        return pd.DataFrame(columns=["persoon_id", "aanst_min_van_year", "aanst_max_tot_year"])
     return pd.DataFrame(rows)
 
 
@@ -48,7 +51,6 @@ def enrich_persoon_life_dates(
     aanstelling: pd.DataFrame,
     *,
     birth_offset_years: int = BIRTH_OFFSET_YEARS,
-    death_padding_years: int = DEATH_PADDING_YEARS,
 ) -> pd.DataFrame:
     """Add EDTF + life year columns to a copy of the persoon frame."""
     result = persoon.copy()
@@ -63,8 +65,8 @@ def enrich_persoon_life_dates(
         result = result.merge(spans, left_on="id", right_on="persoon_id", how="left")
         result = result.drop(columns=["persoon_id"], errors="ignore")
     else:
-        result["aanst_min_year"] = pd.NA
-        result["aanst_max_year"] = pd.NA
+        result["aanst_min_van_year"] = pd.NA
+        result["aanst_max_tot_year"] = pd.NA
 
     life_start: list[int | None] = []
     life_end: list[int | None] = []
@@ -86,30 +88,38 @@ def enrich_persoon_life_dates(
         else:
             overlijden_year = None
 
-        aanst_min = getattr(row, "aanst_min_year", None)
-        aanst_max = getattr(row, "aanst_max_year", None)
-        if aanst_min is not None and pd.notna(aanst_min):
-            aanst_min = int(aanst_min)
+        aanst_min_van = getattr(row, "aanst_min_van_year", None)
+        aanst_max_tot = getattr(row, "aanst_max_tot_year", None)
+        if aanst_min_van is not None and pd.notna(aanst_min_van):
+            aanst_min_van = int(aanst_min_van)
         else:
-            aanst_min = None
-        if aanst_max is not None and pd.notna(aanst_max):
-            aanst_max = int(aanst_max)
+            aanst_min_van = None
+        if aanst_max_tot is not None and pd.notna(aanst_max_tot):
+            aanst_max_tot = int(aanst_max_tot)
         else:
-            aanst_max = None
+            aanst_max_tot = None
 
         start_year = geboorte_year
         start_shadow = False
-        if start_year is None and aanst_min is not None:
-            start_year = aanst_min - birth_offset_years
+        if start_year is None and aanst_min_van is not None:
+            start_year = aanst_min_van - birth_offset_years
             start_shadow = True
 
         end_year = overlijden_year
         end_shadow = False
-        if end_year is None and aanst_max is not None:
-            end_year = aanst_max + death_padding_years
+        shadow_tot_anchor: int | None = None
+        if end_year is None and aanst_max_tot is not None:
+            shadow_tot_anchor = aanst_max_tot
+            end_year = aanst_max_tot
             end_shadow = True
-        if start_year is not None and end_year is not None and end_year <= start_year and aanst_max is not None:
-            end_year = aanst_max + death_padding_years
+        elif (
+            start_year is not None
+            and end_year is not None
+            and end_year <= start_year
+            and aanst_max_tot is not None
+        ):
+            shadow_tot_anchor = aanst_max_tot
+            end_year = aanst_max_tot
             end_shadow = True
 
         life_start.append(start_year)
@@ -123,8 +133,8 @@ def enrich_persoon_life_dates(
             life_start_edtf.append(f"{start_year}~")
         else:
             life_start_edtf.append(geb_edtf if geb_edtf is not None and not pd.isna(geb_edtf) else None)
-        if end_shadow and end_year is not None:
-            life_end_edtf.append(f"{end_year}~")
+        if end_shadow and shadow_tot_anchor is not None:
+            life_end_edtf.append(f">{shadow_tot_anchor}")
         else:
             life_end_edtf.append(ovl_edtf if ovl_edtf is not None and not pd.isna(ovl_edtf) else None)
 
@@ -134,5 +144,5 @@ def enrich_persoon_life_dates(
     result["life_end_source"] = life_end_src
     result["life_start_edtf"] = life_start_edtf
     result["life_end_edtf"] = life_end_edtf
-    result = result.drop(columns=["aanst_min_year", "aanst_max_year"], errors="ignore")
+    result = result.drop(columns=["aanst_min_van_year", "aanst_max_tot_year"], errors="ignore")
     return result

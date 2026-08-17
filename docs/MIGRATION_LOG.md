@@ -232,11 +232,40 @@ In `raa_convert`, Fries/Republic data was **edited on a separate track** from th
 
 ---
 
+### 2026-08-17 — Milestone E1: editorial amendments (instelling.toelichting)
+
+**Done (first slice)**
+
+- `editorial.amendments` schema + `scripts/init_editorial_schema.py`
+- API: `raa_api/editorial.py`, API-key auth via `config.local.toml`, CORS for admin origin
+- Public instelling detail: effective `toelichting` + `toelichting_amended`
+- **`web/admin/`** — separate redactie app (:5174), not search UI clone
+- **`web/shared/`** — shared fetch helpers
+- Docs: [docs/EDITORIAL.md](EDITORIAL.md)
+
+**Open:** E0 merge on re-import, E2–E4 field scope.
+
+---
+
+### 2026-08-17 — Life-date validation + documentation
+
+**Done**
+
+- `raa_life_dates/validate.py`: plausibility bounds [1400, 1920]; audit + sanitize at import; clears garbage years (`0`, `10`, etc.).
+- `edtf.py`: reject implausible years at derive time; display guards in API + UI `lifeCell`.
+- **docs/LIFE_DATES.md** — full reference: import pipeline, institutional gate, shadow birth/death rules, display vs search, EDTF filters, re-import workflow.
+
+**Re-import**
+
+Stop running `./scripts/dev.sh` (Ctrl+C), then `./scripts/dev.sh --import`. Use `--import-only` if you only want Postgres refreshed without starting the API.
+
+---
+
 ### 2026-07-13 — Milestone B2b: shadow life dates + EDTF search API
 
 **Done**
 
-- Package `raa_life_dates/`: `edtf.py` (Level 1 derive + parse), `shadow.py` (`enrich_persoon_life_dates`, offsets 34/22).
+- Package `raa_life_dates/`: `edtf.py` (Level 1 derive + parse), `shadow.py` (`enrich_persoon_life_dates`, birth offset 34).
 - `scripts/shadow_life.py` CLI; `import_release.py` enriches `persoon` before load.
 - New `persoon` columns: `geboorte_edtf`, `overlijden_edtf`, `geboorte_year`, `overlijden_year`, `life_start_year`, `life_end_year`, `life_*_edtf`, `life_*_source`.
 - API: `include_shadow_dates` on `SearchRequest` (default `true`); `filters.geboorte` / `filters.overlijden` accept EDTF intervals; `raa_api/edtf_bounds.py`.
@@ -480,7 +509,8 @@ Planning session on three enhancements above the legacy Huygens app: persons wit
 |-------|----------|
 | No surname (51 rows) | Shared `display_name`: listing uses `voornaam` when `geslachtsnaam` empty; sort `coalesce(geslachtsnaam, voornaam)`; optional detail hint *alleen voornaam bekend* |
 | Shadow life | Import-time `scripts/shadow_life.py`: `life_start_year`, `life_end_year`, `life_*_edtf`, `life_*_source` (`recorded` \| `shadow` \| `partial`); never overwrite source fields |
-| Offsets v1 | Birth: `min(van).year − 34` when no geboorte; death: recorded or `max(tot).year + 22` when missing/invalid |
+| Institutional gate | Import drops aanstelling without parseable `van`; drops persons with no dated appointment (`institutional_gate.py`) |
+| Offsets v1 | Birth: `min(van).year − 34` when no geboorte; death: `>{max(van/tot).year}` when no overlijden (open after last appointment; **no +22 padding** since 2026-08) |
 | Search default | Shadow **on**; UI radio **“zoek exacte datums”** → recorded bounds only |
 | EDTF | Level 1 subset for personen filters (`1720/1750`, `../1720`, `1720~`, …); overlap against life interval; aanstellingen keep ISO date inputs in v1 |
 | Storage | Derive EDTF + shadow columns in `import_release.py` / `shadow_life.py` (not in `raa_convert` extab) |

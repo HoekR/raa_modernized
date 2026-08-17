@@ -8,6 +8,8 @@ from typing import Any
 
 import pandas as pd
 
+from raa_life_dates.validate import coerce_plausible_life_year, is_plausible_life_year
+
 _YEAR_RE = re.compile(r"^(-?\d{1,4})([~?%]?)$")
 _INTERVAL_RE = re.compile(r"^(.+?)/(.+)$")
 
@@ -34,6 +36,10 @@ def _is_truthy_flag(value: Any) -> bool:
 
 
 def _year_from_iso_date(value: Any) -> int | None:
+    return coerce_plausible_life_year(_parse_year_from_iso(value))
+
+
+def _parse_year_from_iso(value: Any) -> int | None:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     text = str(value).strip()
@@ -60,6 +66,9 @@ def _year_from_parts(
     try:
         y = int(float(year_text))
     except ValueError:
+        return None, None
+
+    if not is_plausible_life_year(y):
         return None, None
 
     month_val: int | None = None
@@ -133,6 +142,9 @@ def parse_edtf_interval(value: str) -> YearInterval:
     text = value.strip()
     if not text:
         raise ValueError("Empty EDTF interval")
+
+    if text.startswith(">"):
+        return YearInterval(start=_parse_edtf_point(text[1:]), end=None)
 
     if text.startswith("../"):
         return YearInterval(start=None, end=_parse_edtf_point(text[3:]))

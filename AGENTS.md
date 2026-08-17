@@ -83,6 +83,8 @@ When the `data-io-mcp` add-on is applied, prefer MCP tools (`check_manifest`, `l
 ## Web layer (`web/`)
 
 - API: FastAPI in `web/api/`
-- UI: static frontend in `web/frontend/static/` (SvelteKit later)
+- UI: SvelteKit in `web/ui/` (static legacy in `web/frontend/static/`)
 - Config: `config.local.toml` (copy from `.example`)
-- Import: `uv run python scripts/import_release.py`
+- Import: `uv run python scripts/import_release.py` — or `./scripts/dev.sh --import` (stop running dev stack first; see [docs/LIFE_DATES.md](docs/LIFE_DATES.md) §8)
+- Life dates & search semantics: [docs/LIFE_DATES.md](docs/LIFE_DATES.md)
+- Editorial / redactie (Milestone E): [docs/EDITORIAL.md](docs/EDITORIAL.md) — demo checklist [docs/EDITORIAL_DEMO.md](docs/EDITORIAL_DEMO.md); `web/admin/` on `:5174`; `[editorial]` in root `config.local.toml`

@@ -1,7 +1,8 @@
 <script lang="ts">
   import AzBrowser from '$lib/components/AzBrowser.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
-  import { PAGE_SIZE, periodKey } from '$lib/period';
+  import { get } from 'svelte/store';
+  import { pageSize, periodKey } from '$lib/period';
   import { browseAz, searchEntity } from '$lib/search';
   import { SearchRunGuard } from '$lib/searchRunner';
 
@@ -22,12 +23,12 @@
     try {
       let data;
       if (letter && !q.trim()) {
-        data = await browseAz('functies', { letter, from: offset, size: PAGE_SIZE });
+        data = await browseAz('functies', { letter, from: offset, size: get(pageSize) });
       } else {
         data = await searchEntity('functies', {
           q: q.trim() || null,
           from: offset,
-          size: PAGE_SIZE,
+          size: get(pageSize),
         });
       }
       if (!searchGuard.isCurrent(token)) return;
@@ -45,6 +46,17 @@
 
   function submit() {
     letter = null;
+    offset = 0;
+    runSearch();
+  }
+
+  function onPageChange(o: number) {
+    offset = o;
+    runSearch();
+  }
+
+  function onPageSizeChange(n: number) {
+    pageSize.set(n);
     offset = 0;
     runSearch();
   }
@@ -93,7 +105,13 @@
     <div class="search-results">
       <div class="results-meta">
         <p class="count">{total} treffers</p>
-        <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+        <Pagination
+          {total}
+          {offset}
+          pageSize={$pageSize}
+          onpage={onPageChange}
+          {onPageSizeChange}
+        />
       </div>
       <table>
         <thead>
@@ -113,7 +131,13 @@
           {/each}
         </tbody>
       </table>
-      <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+      <Pagination
+        {total}
+        {offset}
+        pageSize={$pageSize}
+        onpage={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   {/if}
 </section>

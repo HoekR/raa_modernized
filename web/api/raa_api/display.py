@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
+
 from raa_search_display.names import format_persoon_listing_name, format_persoon_naam
 
 __all__ = [
@@ -50,19 +52,32 @@ def format_life_event(
 
 
 def format_persoon_life_summary(person: dict) -> dict[str, str]:
+    from raa_life_dates.validate import is_plausible_life_year, raw_recorded_geboorte_year, raw_recorded_overlijden_year
+
     geboorte_label = "gedoopt" if _is_truthy(person.get("doopjaar")) else "geboren"
+    geb_text = _s(person.get("geboorte_edtf")) or _s(person.get("geboortedatum_als_bekend"))
+    ovl_text = _s(person.get("overlijden_edtf")) or _s(person.get("overlijdensdatum_als_bekend"))
+    geb_row = pd.Series(person)
+    geb_year = raw_recorded_geboorte_year(geb_row)
+    ovl_year = raw_recorded_overlijden_year(geb_row)
+    if geb_text and geb_year is not None and not is_plausible_life_year(geb_year):
+        geb_text = ""
+    if ovl_text and ovl_year is not None and not is_plausible_life_year(ovl_year):
+        ovl_text = ""
+    geb_approx = _is_truthy(person.get("onbepaaldgeboortedatum")) and not _s(person.get("geboorte_edtf"))
+    ovl_approx = _is_truthy(person.get("onbepaaldoverlijdensdatum")) and not _s(person.get("overlijden_edtf"))
     return {
         "geboorte": format_life_event(
             label_born=geboorte_label,
-            date_text=_s(person.get("geboortedatum_als_bekend")),
+            date_text=geb_text,
             plaats=_s(person.get("geboorteplaats")),
-            approximate=_is_truthy(person.get("onbepaaldgeboortedatum")),
+            approximate=geb_approx,
         ),
         "overlijden": format_life_event(
             label_born="overleden",
-            date_text=_s(person.get("overlijdensdatum_als_bekend")),
+            date_text=ovl_text,
             plaats=_s(person.get("overlijdensplaats")),
-            approximate=_is_truthy(person.get("onbepaaldoverlijdensdatum")),
+            approximate=ovl_approx,
         ),
     }
 

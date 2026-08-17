@@ -4,21 +4,41 @@
   import ChipSuggest from '$lib/components/ChipSuggest.svelte';
   import Drawer from '$lib/components/Drawer.svelte';
   import FacetPanel from '$lib/components/FacetPanel.svelte';
+  import SummaryPanel from '$lib/components/SummaryPanel.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import PersoonHoverPreview from '$lib/components/PersoonHoverPreview.svelte';
   import PersoonPreviewIcon from '$lib/components/PersoonPreviewIcon.svelte';
   import StandAdel from '$lib/components/StandAdel.svelte';
-  import { MAX_CHIPS, PAGE_SIZE, periodKey, type FacetValue, type SuggestItem } from '$lib/period';
-  import { groupNested, personName, searchEntity } from '$lib/search';
+  import YearHistogram from '$lib/components/YearHistogram.svelte';
+  import { get } from 'svelte/store';
+  import { MAX_CHIPS, pageSize, periodKey, type FacetValue, type SuggestItem } from '$lib/period';
+  import { groupNested, loadStands, personName, searchEntity } from '$lib/search';
   import { fetchFunctie, fetchInstelling } from '$lib/detail';
+  import {
+    applyPeriodFromParams,
+    parseAanstellingenParams,
+    resolveSuggestItems,
+    aanstellingDateChipLabel,
+    type AanstellingenSearchState,
+  } from '$lib/searchUrl';
+  import { saveOverviewSnapshot } from '$lib/overviewStore';
+  import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import { SearchRunGuard } from '$lib/searchRunner';
   import { HoverPreviewController, createPersoonPreviewHandlers } from '$lib/hoverPreview';
+  import {
+    timelineChartTitle,
+    timelineFilterYears,
+    type TimelineBin,
+    type TimelineMeta,
+    type YearCount,
+  } from '$lib/yearHistogram';
 
   const searchGuard = new SearchRunGuard();
   const hoverCtl = new HoverPreviewController();
   const preview = createPersoonPreviewHandlers({
     hoverCtl,
-    isBlocked: () => refineOpen,
+    isBlocked: () => refineOpen || summaryOpen,
     getActiveId: () => hoverPersonId,
     show: (id, top) => {
       hoverPersonId = id;
@@ -46,15 +66,80 @@
   let adelOnly = $state(false);
   let offset = $state(0);
   let refineOpen = $state(false);
+  let summaryOpen = $state(false);
+  let hasSearched = $state(false);
   let hoverPersonId = $state<number | null>(null);
   let hoverTop = $state(0);
-  let seeded = $state(false);
 
   let total = $state<number | null>(null);
   let hits = $state<Record<string, unknown>[]>([]);
   let facets = $state<Record<string, FacetValue[]>>({});
+  let timeline = $state<YearCount[]>([]);
+  let timelineMeta = $state<TimelineMeta | null>(null);
   let error = $state<string | null>(null);
   let loading = $state(false);
+
+  function aanstellingenUrlState(): AanstellingenSearchState {
+    return {
+      q,
+      van,
+      tot,
+      functieIds: functies.map((f) => f.id),
+      instellingIds: instellingen.map((i) => i.id),
+      provincieIds: provincies.map((p) => p.id),
+      regioIds: regions.map((r) => r.id),
+      lokalIds: lokalen.map((l) => l.id),
+      standIds,
+      adel: adelOnly,
+      functieMatch,
+      instellingMatch,
+      groupBy,
+      sort,
+    };
+  }
+
+  async function seedFromQuery() {
+    const params = $page.url.searchParams;
+    if (!params.toString()) return;
+    const parsed = parseAanstellingenParams(params);
+    const period = applyPeriodFromParams(params);
+    if (period && period !== get(periodKey)) periodKey.set(period);
+    q = parsed.q;
+    van = parsed.van;
+    tot = parsed.tot;
+    groupBy = parsed.groupBy;
+    sort = parsed.sort;
+    adelOnly = parsed.adel;
+    functieMatch = parsed.functieMatch;
+    instellingMatch = parsed.instellingMatch;
+    standIds = parsed.standIds;
+    const [functieItems, instellingItems, stands] = await Promise.all([
+      resolveSuggestItems(fetchFunctie, parsed.functieIds),
+      resolveSuggestItems(fetchInstelling, parsed.instellingIds),
+      loadStands(),
+    ]);
+    functies = functieItems;
+    instellingen = instellingItems;
+    for (const stand of stands) {
+      if (parsed.standIds.includes(stand.id)) {
+        standLabels = { ...standLabels, [stand.id]: stand.naam };
+      }
+    }
+  }
+
+  function openOverview() {
+    if (total === null) return;
+    saveOverviewSnapshot({
+      entity: 'aanstellingen',
+      period: get(periodKey),
+      aanstellingen: aanstellingenUrlState(),
+      total,
+      facets,
+      timeline,
+      timelineMeta,
+    });
+    goto('/aanstellingen/overzicht');
+  }
 
   function buildFilters(): Record<string, string[]> {
     const filters: Record<string, string[]> = {};
@@ -123,7 +208,7 @@
         functie_match: functieMatch,
         instelling_match: instellingMatch,
         from: offset,
-        size: PAGE_SIZE,
+        size: get(pageSize),
         sort,
         group_by: null,
       });
@@ -131,12 +216,17 @@
       total = data.total;
       hits = data.hits;
       facets = data.facets ?? {};
+      timeline = data.timeline ?? [];
+      timelineMeta = data.timeline_meta ?? null;
+      hasSearched = true;
     } catch (e) {
       if (!searchGuard.isCurrent(token)) return;
       error = e instanceof Error ? e.message : String(e);
       total = null;
       hits = [];
       facets = {};
+      timeline = [];
+      timelineMeta = null;
     } finally {
       if (searchGuard.isCurrent(token)) loading = false;
     }
@@ -146,6 +236,29 @@
     offset = 0;
     runSearch();
   }
+
+  function onPageChange(o: number) {
+    offset = o;
+    runSearch();
+  }
+
+  function onPageSizeChange(n: number) {
+    pageSize.set(n);
+    offset = 0;
+    runSearch();
+  }
+
+  function onTimelineSelect(year: number, period?: string) {
+    if (!timelineMeta) return;
+    if (period) periodKey.set(period);
+    const { from, to } = timelineFilterYears(year, timelineMeta.bin as TimelineBin);
+    van = from;
+    tot = to;
+    offset = 0;
+    runSearch();
+  }
+
+  const timelineTitle = $derived(timelineChartTitle('aanstellingen', true));
 
   function clearFilters() {
     functies = [];
@@ -219,49 +332,46 @@
         },
       });
     }
+    const aanstLabel = aanstellingDateChipLabel(van, tot);
+    if (aanstLabel) {
+      chips.push({
+        key: 'aanstelling-dates',
+        label: aanstLabel,
+        clear: () => {
+          van = '';
+          tot = '';
+          offset = 0;
+          runSearch();
+        },
+      });
+    }
     return chips;
   });
 
-  async function seedFromQuery() {
-    if (seeded) return;
-    seeded = true;
-    const fid = $page.url.searchParams.get('functie_id');
-    const iid = $page.url.searchParams.get('instelling_id');
-    if (fid) {
-      const id = Number(fid);
-      if (!Number.isNaN(id)) {
-        try {
-          const d = await fetchFunctie(id);
-          functies = [{ id, naam: d.naam }];
-        } catch {
-          functies = [{ id, naam: `functie ${id}` }];
-        }
-      }
-    }
-    if (iid) {
-      const id = Number(iid);
-      if (!Number.isNaN(id)) {
-        try {
-          const d = await fetchInstelling(id);
-          instellingen = [{ id, naam: d.naam }];
-        } catch {
-          instellingen = [{ id, naam: `instelling ${id}` }];
-        }
-      }
-    }
-  }
+  onMount(() => {
+    let searchReady = false;
+    let lastPeriod = get(periodKey);
 
-  $effect(() => {
-    void $periodKey;
-    void $page.url.search;
-    seedFromQuery().finally(() => {
+    void (async () => {
+      await seedFromQuery();
+      lastPeriod = get(periodKey);
+      offset = 0;
+      await runSearch();
+      searchReady = true;
+    })();
+
+    const unsub = periodKey.subscribe((p) => {
+      if (!searchReady || p === lastPeriod) return;
+      lastPeriod = p;
       offset = 0;
       runSearch();
     });
+
+    return unsub;
   });
 
   $effect(() => {
-    if (refineOpen) hideHover();
+    if (refineOpen || summaryOpen) hideHover();
   });
 </script>
 
@@ -290,6 +400,18 @@
     <button
       type="button"
       class="btn-ghost"
+      class:active={summaryOpen}
+      disabled={!hasSearched}
+      onclick={() => (summaryOpen = !summaryOpen)}
+    >
+      Samenvatting
+    </button>
+    {#if hasSearched}
+      <button type="button" class="btn-ghost" onclick={openOverview}>Overzicht →</button>
+    {/if}
+    <button
+      type="button"
+      class="btn-ghost"
       class:active={refineOpen}
       onclick={() => (refineOpen = !refineOpen)}
     >
@@ -307,8 +429,26 @@
     <div class="search-results">
       <div class="results-meta">
         <p class="count">{total} treffers</p>
-        <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+        <Pagination
+          {total}
+          {offset}
+          pageSize={$pageSize}
+          onpage={onPageChange}
+          {onPageSizeChange}
+        />
       </div>
+      {#if timeline.length > 0 && timelineMeta}
+        <YearHistogram
+          compact
+          title={timelineTitle}
+          bins={timeline}
+          bin={timelineMeta.bin}
+          stacked={timelineMeta.stacked ?? false}
+          entity="aanstellingen"
+          undated={timelineMeta.undated}
+          onselect={onTimelineSelect}
+        />
+      {/if}
       {#each nested as outer}
         <section class="nested-group">
           <h3>
@@ -331,7 +471,12 @@
                   {inner.naam || '(onbekend)'}
                 {/if}
               </h4>
-              <table>
+              <table class="aanstelling-rows">
+                <colgroup>
+                  <col class="col-name" />
+                  <col class="col-date" />
+                  <col class="col-date" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Persoon</th>
@@ -344,14 +489,16 @@
                     {@const pid = Number(row.persoon_id)}
                     <tr>
                       <td class="name-cell">
-                        <a href="/personen/{row.persoon_id}">{personName(row)}</a>
-                        {#if !Number.isNaN(pid)}
-                          <PersoonPreviewIcon
-                            ontrigger={(e) => preview.showPreview(e, pid)}
-                            onrelease={preview.hidePreviewSoon}
-                            onclick={(e) => preview.togglePreview(e, pid)}
-                          />
-                        {/if}
+                        <div class="name-cell-inner">
+                          <a href="/personen/{row.persoon_id}">{personName(row)}</a>
+                          {#if !Number.isNaN(pid)}
+                            <PersoonPreviewIcon
+                              ontrigger={(e) => preview.showPreview(e, pid)}
+                              onrelease={preview.hidePreviewSoon}
+                              onclick={(e) => preview.togglePreview(e, pid)}
+                            />
+                          {/if}
+                        </div>
                       </td>
                       <td class="date">{String(row.van_als_bekend ?? '?')}</td>
                       <td class="date">{String(row.tot_als_bekend ?? '?')}</td>
@@ -363,7 +510,13 @@
           {/each}
         </section>
       {/each}
-      <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+      <Pagination
+        {total}
+        {offset}
+        pageSize={$pageSize}
+        onpage={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   {/if}
 </section>
@@ -431,6 +584,18 @@
   </div>
 </Drawer>
 
+<SummaryPanel
+  bind:open={summaryOpen}
+  entity="aanstellingen"
+  facets={facets}
+  {hasSearched}
+  {total}
+  {timeline}
+  {timelineMeta}
+  onselect={onFacetToggle}
+  {onTimelineSelect}
+/>
+
 <PersoonHoverPreview
   open={hoverPersonId != null}
   personId={hoverPersonId}
@@ -470,5 +635,17 @@
   }
   .nested-inner h4 a:hover {
     color: var(--raa-accent);
+  }
+  .nested-inner table.aanstelling-rows {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .nested-inner table.aanstelling-rows col.col-date {
+    /* DD-MM-YYYY (10ch) + horizontal cell padding */
+    width: calc(10ch + 1.5rem);
+  }
+  .nested-inner table.aanstelling-rows :is(td.date, th.date) {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
 </style>

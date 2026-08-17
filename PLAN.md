@@ -642,9 +642,11 @@ Run: API via `./scripts/dev.sh`, UI via `cd web/ui && npm install && npm run dev
 
 | Slice | Scope | Status |
 | ----- | ----- | ------ |
-| **E1 / 5a** | Edit `instelling.toelichting` → `editorial_amendments` | planned |
-| **E2 / 5b** | `opmerkingen` on persoon/aanstelling | planned |
-| **E3 / 5c** | Core fields + conflict review on re-import | planned |
+| **E0** | Staging import + merge + conflicts | **shipped** — see [docs/EDITORIAL.md](docs/EDITORIAL.md) |
+| **E1 / 5a** | `instelling.toelichting` + `web/admin` | **shipped** |
+| **E2 / 5b** | `opmerkingen` persoon/aanstelling | **shipped** |
+| **E3 / 5c** | Core persoon fields + enrich refresh | **shipped** |
+| **E5** | In-browser werklijst grid (bulk persoon edit) | **shipped** — `/werklijst/personen` |
 | **E4 / 5d** | Create new records (web-only IDs) | planned |
 
 ### Milestone B2 — Display, dates, identity search (**shipped**)
@@ -693,24 +695,23 @@ Build: `raa_entity_spans/` + hook in `import_release.py`. Rows with null `van`/`
 
 **B2b — shadow life dates (shipped)**
 
+Full reference: **[docs/LIFE_DATES.md](docs/LIFE_DATES.md)** (recorded vs shadow, validation, search, re-import).
+
 Port `hypothetical_life` from `republic_clean/republic/data/datamangler.py`:
 
 - Appointment span per person: `min(van)` / `max(tot)` using `pd.Period(freq="D")` (not `Timestamp` before 1678).
-- No recorded birth → `life_start_year = min(van).year − 34`.
-- No valid death → `life_end_year = max(tot).year + 22` (if death ≤ birth, apply padding rule).
+- **Institutional gate (import):** drop aanstelling rows without parseable `van`; drop persons with no dated appointment left (`raa_life_dates.institutional_gate`).
+- **Plausibility (import):** clear recorded source fields when geboorte/overlijden year ∉ [1400, 1920] (`raa_life_dates.validate`).
+- No recorded birth → `life_start_year = min(van).year − 34`; display/search EDTF `{year}~`.
+- No valid death → search uses `max(tot).year` as `life_end_year`; display `life_end_edtf = >{max(tot)}` (open after last office; **not** a death-year claim; no +22 padding).
 - Source columns: `life_start_source`, `life_end_source` ∈ `recorded` \| `shadow` \| `partial`.
 
 **Search semantics**
 
-- Default: overlap query uses full life interval (recorded + shadow fill).
-- **“zoek exacte datums”** selected: overlap uses **recorded** bounds only.
-- Aanstellingen `van`/`tot`: ISO `YYYY-MM-DD` in v1 (maps to EDTF Level 0).
-
-**EDTF (personen, Level 1 subset)**
-
-- Storage: `geboorte_edtf`, `overlijden_edtf`, `life_start_edtf`, `life_end_edtf` (text).
-- Query examples: `1720/1750`, `../1720`, `1720/..`, `1720~`, `1720?`.
-- Spec: [LOC EDTF](https://www.loc.gov/standards/datetime/).
+- Default (`include_shadow_dates: true`): filters and timeline use `COALESCE(geboorte_year, life_start_year)` and `COALESCE(overlijden_year, life_end_year)`.
+- **“zoek exacte datums”** (`include_shadow_dates: false`): recorded years only; shadow-only persons count as undated on timeline.
+- EDTF interval filters on `filters.geboorte` / `filters.overlijden`; overlap on inclusive year bounds.
+- Re-import after rule changes: stop running `./scripts/dev.sh`, then `./scripts/dev.sh --import` (see LIFE_DATES.md §8).
 
 **Explicit TODO** — kept in the [living checklist](#todos-living-checklist) (Deferred). Local copies:
 

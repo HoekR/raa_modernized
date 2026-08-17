@@ -103,7 +103,9 @@ function formatLifeDateCell(row, kind) {
   let text = display != null ? String(display).trim() : "";
   if (!text) {
     if (lifeSource === "shadow" && lifeYear != null && lifeYear !== "") {
-      return `${escapeHtml(String(lifeYear))} <span class="provenance geschat" title="Geschat uit aanstellingen">geschat</span>`;
+      const shadowText =
+        !isBirth && edtf && String(edtf).startsWith(">") ? String(edtf) : String(lifeYear);
+      return `${escapeHtml(shadowText)} <span class="provenance geschat" title="Laatste aanstelling bekend; overlijden onbekend">geschat</span>`;
     }
     return "-";
   }

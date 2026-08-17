@@ -15,8 +15,23 @@ from raa_api.display import (
     format_persoon_listing_name,
     format_persoon_naam,
 )
-from raa_api.edtf_bounds import life_year_overlap_sql
-from raa_api.schemas import FacetValue, PeriodCount, SearchRequest, SearchResponse, text_search_patterns
+from raa_api.editorial import apply_effective_value, effective_column_sql
+from raa_api.editorial_fields import EDITABLE_FIELDS
+from raa_api.edtf_bounds import _year_column, life_year_overlap_sql
+from raa_api.schemas import (
+    FacetValue,
+    PeriodCount,
+    SearchRequest,
+    SearchResponse,
+    SummaryResponse,
+    TimelineMeta,
+    text_search_patterns,
+)
+from raa_api.timeline import (
+    compress_stacked_timeline,
+    compress_timeline,
+    merge_period_year_rows,
+)
 
 # republiek_friezen: separately edited Fries rows in raa_convert — included when filtering Republiek.
 PERIOD_FLAG_COLUMNS: dict[str, tuple[str, ...]] = {
@@ -73,7 +88,7 @@ def _persoon_text_token_clause(param_key: str) -> str:
         OR p.voornaam ILIKE :{param_key}
         OR p.tussenvoegsel ILIKE :{param_key}
         OR p.heerlijkheid ILIKE :{param_key}
-        OR p.opmerkingen ILIKE :{param_key}
+        OR {effective_column_sql("persoon", "opmerkingen", "p", "opmerkingen")} ILIKE :{param_key}
         OR EXISTS (
             SELECT 1 FROM raa.alias al
             WHERE al.persoon_id = p.id AND al.naam ILIKE :{param_key}
@@ -93,6 +108,37 @@ def _persoon_text_token_clause(param_key: str) -> str:
     )"""
 
 
+_PERSON_NAME_PART_COLUMNS: dict[str, str] = {
+    "geslachtsnaam": "p.geslachtsnaam",
+    "voornaam": "p.voornaam",
+    "tussenvoegsel": "p.tussenvoegsel",
+    "heerlijkheid": "p.heerlijkheid",
+}
+
+
+def _persoon_name_part_clauses(filters: dict[str, list[str]], params: dict) -> list[str]:
+    """Structured name-field filters (AND across fields; wildcards per field)."""
+    clauses: list[str] = []
+    for field, column in _PERSON_NAME_PART_COLUMNS.items():
+        value = (_date_filter(filters, field) or "").strip()
+        if not value:
+            continue
+        for i, pattern in enumerate(text_search_patterns(value, anchor="prefix")):
+            key = f"np_{field}_{i}"
+            clauses.append(f"{column} ILIKE :{key}")
+            params[key] = pattern
+    alias = (_date_filter(filters, "alias") or "").strip()
+    if alias:
+        for i, pattern in enumerate(text_search_patterns(alias, anchor="prefix")):
+            key = f"np_alias_{i}"
+            clauses.append(
+                "EXISTS (SELECT 1 FROM raa.alias al "
+                f"WHERE al.persoon_id = p.id AND al.naam ILIKE :{key})"
+            )
+            params[key] = pattern
+    return clauses
+
+
 def _persoon_where(
     req: SearchRequest, *, omit_filter_keys: set[str] | None = None
 ) -> tuple[str, dict]:
@@ -102,11 +148,14 @@ def _persoon_where(
     params: dict = {}
 
     if req.q:
-        patterns = text_search_patterns(req.q)
+        anchor = req.q_mode if req.q_mode in ("prefix", "contains", "pattern", "exact") else "prefix"
+        patterns = text_search_patterns(req.q, anchor=anchor)
         for i, pattern in enumerate(patterns):
             key = f"q{i}"
             where.append(_persoon_text_token_clause(key))
             params[key] = pattern
+
+    where.extend(_persoon_name_part_clauses(req.filters, params))
 
     if "instelling_id" not in omit:
         instelling_ids = _int_ids(req.filters, "instelling_id")
@@ -175,6 +224,17 @@ def _normalize_filter_date(value: str | None, *, end: bool = False) -> str | Non
     if len(text) == 4 and text.isdigit():
         return f"{text}-12-31" if end else f"{text}-01-01"
     return text
+
+
+def _aanstelling_van_year_sql(alias: str = "a") -> str:
+    """Start year from text `van` (ISO date, year-only, or undated sentinel)."""
+    van = f"{alias}.van"
+    return f"""CASE
+        WHEN {van} IS NULL OR TRIM({van}) IN ('', 'None') THEN NULL
+        WHEN {van} ~ '^[0-9]{{4}}-' THEN SUBSTRING({van} FROM 1 FOR 4)::int
+        WHEN {van} ~ '^[0-9]{{4}}$' THEN {van}::int
+        ELSE NULL
+    END"""
 
 
 def _persoon_aanstelling_date_clauses(req: SearchRequest) -> tuple[list[str], dict]:
@@ -393,7 +453,139 @@ def search_personen(db: Session, req: SearchRequest) -> SearchResponse:
         item["display_naam"] = format_persoon_listing_name(item)
         hits.append(item)
     facets = _personen_facets(db, where_sql, params, req)
-    return SearchResponse(hits=hits, total=total, facets=facets)
+    timeline, timeline_meta = _personen_timeline(db, where_sql, params, req)
+    return SearchResponse(
+        hits=hits, total=total, facets=facets, timeline=timeline, timeline_meta=timeline_meta
+    )
+
+
+def summarize_personen(db: Session, req: SearchRequest) -> SummaryResponse:
+    """Count + facet + timeline only (no hit rows) for overview charts."""
+    where_sql, params = _persoon_where(req)
+    total = int(
+        db.execute(
+            text(f"SELECT COUNT(*) FROM raa.persoon p WHERE {where_sql}"),
+            params,
+        ).scalar()
+        or 0
+    )
+    facets = _personen_facets(db, where_sql, params, req)
+    timeline, timeline_meta = _personen_timeline(db, where_sql, params, req)
+    return SummaryResponse(
+        total=total, facets=facets, timeline=timeline, timeline_meta=timeline_meta
+    )
+
+
+def _personen_timeline(
+    db: Session, where_sql: str, params: dict, req: SearchRequest
+) -> tuple[list, TimelineMeta | None]:
+    col = _year_column("geboorte", req.include_shadow_dates)
+    undated = int(
+        db.execute(
+            text(f"SELECT COUNT(*) FROM raa.persoon p WHERE {where_sql} AND {col} IS NULL"),
+            params,
+        ).scalar()
+        or 0
+    )
+    field = "geboorte" if req.include_shadow_dates else "geboorte_exact"
+
+    if req.period_mode == "overall":
+        period_rows: dict[str, list[tuple[int, int]]] = {}
+        for key, _label in PERIODS:
+            match = _period_match_sql("p", key)
+            rows = db.execute(
+                text(
+                    f"""
+                    SELECT {col} AS y, COUNT(DISTINCT p.id)
+                    FROM raa.persoon p
+                    WHERE {where_sql} AND {col} IS NOT NULL AND {match}
+                    GROUP BY 1
+                    ORDER BY 1
+                    """
+                ),
+                params,
+            ).all()
+            period_rows[key] = [(int(r[0]), int(r[1])) for r in rows]
+        merged = merge_period_year_rows(period_rows)
+        timeline, bin_mode = compress_stacked_timeline(merged)
+        return timeline, TimelineMeta(
+            field=field, bin=bin_mode, undated=undated, stacked=True
+        )
+
+    rows = db.execute(
+        text(
+            f"""
+            SELECT {col} AS y, COUNT(DISTINCT p.id)
+            FROM raa.persoon p
+            WHERE {where_sql} AND {col} IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+            """
+        ),
+        params,
+    ).all()
+    timeline, bin_mode = compress_timeline([(int(r[0]), int(r[1])) for r in rows])
+    return timeline, TimelineMeta(field=field, bin=bin_mode, undated=undated)
+
+
+def _aanstelling_timeline(
+    db: Session, where_sql: str, params: dict, req: SearchRequest
+) -> tuple[list, TimelineMeta | None]:
+    van_year = _aanstelling_van_year_sql("a")
+    undated = int(
+        db.execute(
+            text(
+                f"""
+                SELECT COUNT(a.id)
+                FROM raa.aanstelling a
+                JOIN raa.persoon p ON p.id = a.persoon_id
+                WHERE {where_sql} AND ({van_year}) IS NULL
+                """
+            ),
+            params,
+        ).scalar()
+        or 0
+    )
+
+    if req.period_mode == "overall":
+        period_rows: dict[str, list[tuple[int, int]]] = {}
+        for key, _label in PERIODS:
+            match = _period_match_sql("a", key)
+            rows = db.execute(
+                text(
+                    f"""
+                    SELECT {van_year} AS y, COUNT(a.id)
+                    FROM raa.aanstelling a
+                    JOIN raa.persoon p ON p.id = a.persoon_id
+                    WHERE {where_sql} AND ({van_year}) IS NOT NULL AND {match}
+                    GROUP BY 1
+                    ORDER BY 1
+                    """
+                ),
+                params,
+            ).all()
+            period_rows[key] = [(int(r[0]), int(r[1])) for r in rows]
+        merged = merge_period_year_rows(period_rows)
+        timeline, bin_mode = compress_stacked_timeline(merged)
+        return timeline, TimelineMeta(
+            field="aanstelling_van", bin=bin_mode, undated=undated, stacked=True
+        )
+
+    rows = db.execute(
+        text(
+            f"""
+            SELECT {van_year} AS y, COUNT(a.id)
+            FROM raa.aanstelling a
+            JOIN raa.persoon p ON p.id = a.persoon_id
+            WHERE {where_sql} AND ({van_year}) IS NOT NULL
+            GROUP BY 1
+            ORDER BY 1
+            """
+        ),
+        params,
+    ).all()
+    timeline, bin_mode = compress_timeline([(int(r[0]), int(r[1])) for r in rows])
+    return timeline, TimelineMeta(field="aanstelling_van", bin=bin_mode, undated=undated)
 
 
 _PERSONEN_FACET_LIMIT = 20
@@ -533,6 +725,12 @@ def get_persoon_detail(db: Session, person_id: int) -> dict | None:
     if not person:
         return None
     detail = dict(person)
+    for field_name in EDITABLE_FIELDS.get("persoon", {}):
+        base_val = detail.get(field_name)
+        effective, amended = apply_effective_value(db, "persoon", person_id, field_name, base_val)
+        if amended:
+            detail[f"{field_name}_base"] = base_val
+            detail[field_name] = effective
     detail["display_naam"] = format_persoon_naam(detail)
     detail["listing_naam"] = format_persoon_listing_name(detail)
     detail["life_summary"] = format_persoon_life_summary(detail)
@@ -565,6 +763,12 @@ def get_persoon_detail(db: Session, person_id: int) -> dict | None:
         for r in db.execute(text(_AANSTELLING_DETAIL_SQL), {"id": person_id}).mappings().all()
     ]
     for a in aanstellingen:
+        oid = int(a["id"])
+        base_opm = a.get("opmerkingen")
+        effective, amended = apply_effective_value(db, "aanstelling", oid, "opmerkingen", base_opm)
+        if amended:
+            a["opmerkingen_base"] = base_opm
+            a["opmerkingen"] = effective
         if a.get("opmerkingen"):
             a["opmerkingen_html"] = format_opmerkingen_html(a["opmerkingen"])
     lokaal, bovenlokaal = _split_aanstellingen(aanstellingen)
@@ -849,7 +1053,34 @@ def search_aanstellingen(db: Session, req: SearchRequest) -> SearchResponse:
     ).mappings().all()
     hits = [dict(row) for row in rows]
     facets = _aanstelling_facets(db, where_sql, params, req)
-    return SearchResponse(hits=hits, total=total, facets=facets)
+    timeline, timeline_meta = _aanstelling_timeline(db, where_sql, params, req)
+    return SearchResponse(
+        hits=hits, total=total, facets=facets, timeline=timeline, timeline_meta=timeline_meta
+    )
+
+
+def summarize_aanstellingen(db: Session, req: SearchRequest) -> SummaryResponse:
+    """Count + facet + timeline for flat aanstelling rows (overview charts)."""
+    where_sql, params = _aanstelling_where(req)
+    total = int(
+        db.execute(
+            text(
+                f"""
+                SELECT COUNT(*)
+                FROM raa.aanstelling a
+                JOIN raa.persoon p ON p.id = a.persoon_id
+                WHERE {where_sql}
+                """
+            ),
+            params,
+        ).scalar()
+        or 0
+    )
+    facets = _aanstelling_facets(db, where_sql, params, req)
+    timeline, timeline_meta = _aanstelling_timeline(db, where_sql, params, req)
+    return SummaryResponse(
+        total=total, facets=facets, timeline=timeline, timeline_meta=timeline_meta
+    )
 
 
 def _named_entity_where(prefix: str, req: SearchRequest) -> tuple[str, dict]:
@@ -916,6 +1147,15 @@ def get_instelling_detail(db: Session, instelling_id: int) -> dict | None:
     if not row:
         return None
     detail = dict(row)
+    from raa_api.editorial import apply_effective_value
+
+    base_toelichting = detail.get("toelichting")
+    effective, amended = apply_effective_value(
+        db, "instelling", instelling_id, "toelichting", base_toelichting
+    )
+    detail["toelichting_base"] = base_toelichting
+    detail["toelichting"] = effective
+    detail["toelichting_amended"] = amended
     aanstelling_count = int(
         db.execute(
             text("SELECT COUNT(*) FROM raa.aanstelling WHERE instelling_id = :id"),

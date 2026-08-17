@@ -12,20 +12,43 @@ Working document for **Milestone B validation** ([PLAN.md](../PLAN.md)): compare
 **How to use**
 
 1. Run each RQ in **legacy** (note total hits + spot-check 2–3 rows).
-2. Run the same RQ in the **pilot** (`http://127.0.0.1:8000/static/…`).
+2. Run the same RQ in the **pilot** (SvelteKit `:5173` or `http://127.0.0.1:8000/static/…`).
 3. Fill in **Legacy** / **Δ** / **Verdict** / **Notes**.
 4. Log meaningful gaps in [MIGRATION_LOG.md](MIGRATION_LOG.md).
+
+**What we compare (and what we do not)**
+
+Legacy and pilot are **not** the same system. **Hit counts are not expected to match.**
+
+| Compare | Do not require |
+|---------|----------------|
+| Can the pilot **answer the same research question**? | Identical total hits |
+| Do **spot-checked rows** look like the same people/offices? | Identical sort order |
+| Are **differences explainable** (see below)? | Legacy count as pass/fail threshold |
+| Does **detail** for the same *person* (by biography, not id) hold up? | Huygens URL id = pilot id |
+
+**Expected reasons counts differ**
+
+- **Period model** — pilot `republiek` includes sub-periods (e.g. `republiek_friezen`); legacy scope may differ (X1).
+- **Shadow / EDTF dates** — pilot can include estimated life dates in personen search; legacy has no EDTF (X5).
+- **Search index** — pilot uses `search_display` + structured fields + wildcards; legacy form semantics differ (X2; wildcard fix 2026-08).
+- **Data pipeline** — `extab.pkl` / Postgres import,divperioden purge, merges vs Huygens production DB.
+- **Filter wiring** — en/of functie×instelling, geo facets, aanstellingsdatum overlap (may widen or narrow vs legacy).
+- **ID namespace** — D-58: never compare by numeric id alone.
+
+Legacy counts are **reference baselines** for discussion and regression notes, not a parity contract.
 
 **Pass criteria (default)**
 
 | Check | Pass |
 |-------|------|
-| **Count** | Within ±2% of legacy, or explainable (divperioden purge, shadow dates, period scope) |
-| **Spot-check** | Same 3 persons/offices appear in first page (order may differ if sort differs) |
-| **Detail** | Person detail shows bovenlokaal/namens, bronnen, life dates where legacy does (compare same **person**, not same numeric id) |
+| **Answerable** | Pilot can run the RQ (filters/UI exist); not blocked |
+| **Spot-check** | 2–3 expected persons/offices appear in results (order may differ) |
+| **Detail** | Person detail shows bovenlokale/namens, bronnen, life dates where legacy does (same **person**, not same id) |
+| **Count Δ** | Document legacy vs pilot + **explain** (no ±% gate); large unexplained Δ → investigate |
 | **Blocked** | Pilot cannot answer RQ at all → **fail** + note missing filter/UI |
 
-**B4b status (2026-08-16):** pilot baselines + automated X1–X5 locked; structural/detail RQs verified against Huygens pages where possible. **Legacy hit counts** still need interactive Huygens form fills (no public GET search API).
+**B4b status (2026-08-16, criteria revised 2026-08-17):** pilot baselines + automated X1–X5 locked; structural/detail RQs verified against Huygens pages where possible. Legacy hit counts are **optional reference** (interactive Huygens forms); mismatched totals are OK when explained.
 
 ```bash
 # from repo root — requires Postgres with imported data
@@ -40,7 +63,7 @@ uv run python scripts/validation_rq_smoke.py --assert
 | ID | Research question | Period | Pilot steps | Pilot baseline | Legacy | Δ | Verdict | Notes |
 |----|-------------------|--------|-------------|----------------|--------|---|---------|-------|
 | **P1** | Wie waren de **Aylva's** in de Republiek? | Republiek, scoped | `q` = `aylva` | **37** | *TBD form* | | **pilot OK** | Wildcard `van*aylva` → 31; fill Legacy count interactively |
-| **P2** | Wie werd **geboren tussen 1700 en 1750**? | Republiek | `geboorte` = `1700/1750`; default incl. shadow | **1616** | *TBD form* | | **pilot OK / modern-only** | Shadow expands count vs exact (see X5); Legacy has no EDTF |
+| **P2** | Wie werd **geboren tussen 1700 en 1750**? | Republiek | `geboorte` = `1700/1750`; default incl. shadow | **1616** | *TBD form* | | **pilot OK / modern-only** | Shadow expands count vs exact (see X5); Legacy has no EDTF. Rules: [LIFE_DATES.md](LIFE_DATES.md) |
 | **P3** | Wie bekleedde **gedeputeerde** bij de **Gedeputeerde Staten van Friesland**? | Republiek | functie *gedeputeerde* (561); instelling *Gedeputeerde Staten van Friesland* (171); **en** | **411** personen | *TBD form* | | **pilot OK** | En/of wiring verified (X4) |
 | **P4** | Wie bekleedde **burgemeester** in **Utrecht** (provinciaal)? | Republiek | functie *burgemeester*; provincie *Utrecht* | *run UI* | *TBD form* | | **pilot capable** | B3c geo + stand/adel |
 | **P5** | Wie had een aanstelling **1750–1770**? | Republiek | `van`=`1750`, `tot`=`1770` | **2841** | *TBD form* | | **pilot OK** | B3d; modern overlap semantics |
@@ -117,10 +140,10 @@ uv run python scripts/validation_rq_smoke.py --assert
 | Pilot can answer all 16 RQs (no blocked filters) | **Yes** (B3a–e) |
 | Automated X1–X5 | **Pass** (`--assert`) |
 | ID concordance sample corrected | **Yes** (6448 biography → 21510) |
-| Interactive Legacy **hit counts** filled | **Open** — needs ~1–2 h on Huygens search forms |
-| Close B3 (≥12/16 Legacy-compared) | **Deferred** until Legacy count cells filled |
+| Legacy hit counts (reference) | **Optional** — note for context, not parity |
+| B3 validation close | **RQ answerable + spot-check + explain Δ** — not count match |
 
-**Next:** Milestone **C** (SvelteKit) may proceed; finish Legacy count cells when convenient for B3 formal close / B4b complete.
+**Next:** Finish Legacy **reference** counts when useful for notes; formal pass = answerable RQ + spot-check, not equal totals.
 
 ---
 
@@ -129,7 +152,8 @@ uv run python scripts/validation_rq_smoke.py --assert
 | Verdict | Action |
 |---------|--------|
 | **Pass** | Mark row in MIGRATION_LOG parity matrix |
-| **Pass with note** | Document difference (e.g. shadow dates, modern-only feature) |
+| **Pass with note** | Document difference (e.g. shadow dates, period scope, search semantics) — **expected** |
+| **Investigate** | Large unexplained Δ or missing expected persons in spot-check |
 | **Fail — filter gap** | Add to B3 slice |
 | **Fail — SQL bug** | Fix `search.py` + regression test |
 | **Fail — data** | Check import / `raa_convert` / divperioden purge |
