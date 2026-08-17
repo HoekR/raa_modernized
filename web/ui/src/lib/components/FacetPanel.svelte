@@ -27,10 +27,12 @@
     facets = {},
     selectedKeys = {},
     ontoggle,
+    embedded = false,
   }: {
     facets?: Record<string, FacetValue[]>;
     selectedKeys?: Record<string, string[]>;
     ontoggle: (dimension: string, value: FacetValue) => void;
+    embedded?: boolean;
   } = $props();
 
   function isSelected(dim: string, key: string): boolean {
@@ -42,8 +44,10 @@
   }
 </script>
 
-<aside class="facets">
-  <h3>Verfijnen</h3>
+<aside class="facets" class:embedded>
+  {#if !embedded}
+    <h3>Verfijnen</h3>
+  {/if}
   {#each dims() as dim}
     <section class="dim">
       <h4>{LABELS[dim] ?? dim}</h4>
@@ -77,6 +81,15 @@
     max-height: calc(100vh - 1.5rem);
     overflow: auto;
     box-shadow: var(--raa-shadow);
+  }
+  .facets.embedded {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    position: static;
+    max-height: none;
+    overflow: visible;
+    background: transparent;
   }
   h3 {
     margin: 0 0 0.85rem;

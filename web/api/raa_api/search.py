@@ -66,7 +66,7 @@ def _life_date_clauses(req: SearchRequest) -> tuple[list[str], dict]:
 
 
 def _persoon_text_token_clause(param_key: str) -> str:
-    """One query token must match the shadow search blob or legacy identity fields."""
+    """One query token must match search_display and/or legacy identity fields."""
     legacy_fields = f"""
         p.searchable ILIKE :{param_key}
         OR p.geslachtsnaam ILIKE :{param_key}
@@ -89,7 +89,7 @@ def _persoon_text_token_clause(param_key: str) -> str:
     """
     return f"""(
         COALESCE(p.search_display, '') ILIKE :{param_key}
-        OR (p.search_display IS NULL AND ({legacy_fields.strip()}))
+        OR ({legacy_fields.strip()})
     )"""
 
 

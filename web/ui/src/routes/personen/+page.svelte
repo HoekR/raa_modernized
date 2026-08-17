@@ -1,11 +1,18 @@
 <script lang="ts">
-  import ChipSuggest from '$lib/components/ChipSuggest.svelte';
-  import FacetPanel from '$lib/components/FacetPanel.svelte';
+  import ActiveChips from '$lib/components/ActiveChips.svelte';
   import AzBrowser from '$lib/components/AzBrowser.svelte';
+  import ChipSuggest from '$lib/components/ChipSuggest.svelte';
+  import Drawer from '$lib/components/Drawer.svelte';
+  import FacetPanel from '$lib/components/FacetPanel.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
+  import PersoonDetailDrawer from '$lib/components/PersoonDetailDrawer.svelte';
+  import SortPills from '$lib/components/SortPills.svelte';
   import StandAdel from '$lib/components/StandAdel.svelte';
   import { MAX_CHIPS, PAGE_SIZE, periodKey, type FacetValue, type SuggestItem } from '$lib/period';
   import { lifeCell, listingName, searchEntity } from '$lib/search';
+  import { SearchRunGuard } from '$lib/searchRunner';
+
+  const searchGuard = new SearchRunGuard();
 
   let q = $state('');
   let letter = $state<string | null>(null);
@@ -27,7 +34,10 @@
   let sort = $state('geslachtsnaam');
   let sortDir = $state<'asc' | 'desc'>('asc');
   let offset = $state(0);
-  let advancedOpen = $state(false);
+  let refineOpen = $state(false);
+  let detailOpen = $state(false);
+  let detailPersonId = $state<number | null>(null);
+  let selectedRowId = $state<number | null>(null);
 
   let total = $state<number | null>(null);
   let hits = $state<Record<string, unknown>[]>([]);
@@ -102,6 +112,7 @@
   }
 
   async function runSearch() {
+    const token = searchGuard.begin();
     loading = true;
     error = null;
     try {
@@ -116,17 +127,19 @@
         sort,
         sort_dir: sortDir,
       });
+      if (!searchGuard.isCurrent(token)) return;
       total = data.total;
       hits = data.hits;
       facets = data.facets ?? {};
       hasSearched = true;
     } catch (e) {
+      if (!searchGuard.isCurrent(token)) return;
       error = e instanceof Error ? e.message : String(e);
       total = null;
       hits = [];
       facets = {};
     } finally {
-      loading = false;
+      if (searchGuard.isCurrent(token)) loading = false;
     }
   }
 
@@ -150,6 +163,12 @@
     tot = '';
     offset = 0;
     runSearch();
+  }
+
+  function openDetail(id: number) {
+    selectedRowId = id;
+    detailPersonId = id;
+    detailOpen = true;
   }
 
   const activeChips = $derived.by(() => {
@@ -227,294 +246,164 @@
   });
 </script>
 
-<section>
+<section class="search-page">
   <h2>Personen zoeken</h2>
 
   <form
-    class="basic"
+    class="search-toolbar"
     onsubmit={(e) => {
       e.preventDefault();
       submit();
     }}
   >
-    <label class="q">
-      Naam (wildcards * ?)
-      <input bind:value={q} placeholder="bijv. aylva" />
-    </label>
-    <button type="submit" disabled={loading}>{loading ? 'Zoeken…' : 'Zoeken'}</button>
-  </form>
-
-  <p class="hint az-hint">Of blader op geslachtsnaam (A–Z, periode-scoped):</p>
-  <AzBrowser
-    entity="personen"
-    bind:letter
-    onchange={() => {
-      q = '';
-      offset = 0;
-      runSearch();
-    }}
-  />
-
-  <details class="advanced" bind:open={advancedOpen}>
-    <summary>Meer filters (datums, typeahead, en/of)</summary>
-    <div class="advanced-body">
-      <fieldset class="box">
-        <legend>Geboorte en overlijden</legend>
-        <p class="hint">EDTF, bijv. <code>1700/1750</code>, <code>../1800</code>, <code>1720~</code></p>
-        <div class="grid2">
-          <label>Geboorte <input bind:value={geboorte} placeholder="1700/1750" /></label>
-          <label>Overlijden <input bind:value={overlijden} placeholder="../1800" /></label>
-        </div>
-        <div class="radios">
-          <label><input type="radio" bind:group={dateMode} value="incl_shadow" /> incl. geschatte jaartallen</label>
-          <label><input type="radio" bind:group={dateMode} value="exact" /> zoek exacte datums</label>
-        </div>
-      </fieldset>
-
-      <fieldset class="box">
-        <legend>Aanstellingsdatum</legend>
-        <p class="hint">Jaar of YYYY-MM-DD</p>
-        <div class="grid2">
-          <label>Van <input bind:value={van} placeholder="1750" /></label>
-          <label>Tot <input bind:value={tot} placeholder="1770" /></label>
-        </div>
-      </fieldset>
-
-      <fieldset class="box">
-        <legend>Functie en instelling</legend>
-        <div class="grid2">
-          <ChipSuggest label="Functie" field="functie" bind:selected={functies} bind:match={functieMatch} />
-          <ChipSuggest
-            label="Instelling"
-            field="instelling"
-            bind:selected={instellingen}
-            bind:match={instellingMatch}
-          />
-        </div>
-      </fieldset>
-
-      <fieldset class="box">
-        <legend>Vertegenwoordiging</legend>
-        <div class="grid3">
-          <ChipSuggest label="Provinciaal" field="provincie" bind:selected={provincies} showMatch={false} />
-          <ChipSuggest label="Regionaal" field="regio" bind:selected={regions} showMatch={false} />
-          <ChipSuggest label="Lokaal" field="lokaal" bind:selected={lokalen} showMatch={false} />
-        </div>
-      </fieldset>
-
-      <StandAdel bind:standIds bind:adelOnly />
-
-      <button type="button" onclick={submit} disabled={loading}>Filters toepassen</button>
+    <div class="search-toolbar-left">
+      <label class="q">
+        Naam (wildcards * ?)
+        <input bind:value={q} placeholder="bijv. aylva" />
+      </label>
+      <button type="submit" disabled={loading}>{loading ? 'Zoeken…' : 'Zoeken'}</button>
+      <AzBrowser
+        entity="personen"
+        compact
+        bind:letter
+        onchange={() => {
+          q = '';
+          offset = 0;
+          runSearch();
+        }}
+      />
     </div>
-  </details>
+    <button
+      type="button"
+      class="btn-ghost"
+      class:active={refineOpen}
+      onclick={() => (refineOpen = !refineOpen)}
+    >
+      Verfijnen ▾
+    </button>
+  </form>
 
   {#if error}
     <p class="err">{error} — start API with <code>./scripts/dev.sh</code></p>
   {/if}
 
-  {#if activeChips.length}
-    <ul class="active">
-      {#each activeChips as chip}
-        <li>
-          {chip.label}
-          <button type="button" class="x" onclick={chip.clear} aria-label="verwijder">×</button>
-        </li>
-      {/each}
-      <li class="clear-all">
-        <button type="button" onclick={clearFilters}>Wis filters</button>
-      </li>
-    </ul>
-  {/if}
+  <ActiveChips chips={activeChips} onClearAll={activeChips.length ? clearFilters : undefined} />
 
   {#if hasSearched && total !== null}
-    <div class="layout">
-      <div class="results">
+    <div class="search-results">
+      <div class="results-meta">
         <p class="count">{total} treffers</p>
-        <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
-        <div class="sort" aria-label="Sorteer">
-          <span class="sort-label">Sorteer:</span>
-          {#each [['geslachtsnaam', 'Naam'], ['geboortedatum', 'Geboren'], ['overlijdensdatum', 'Overleden']] as [key, label]}
-            <button
-              type="button"
-              class:active={sort === key}
-              class:desc={sort === key && sortDir === 'desc'}
-              class:asc={sort === key && sortDir === 'asc'}
-              title={sort === key ? (sortDir === 'asc' ? 'Oplopend — klik voor aflopend' : 'Aflopend — klik voor oplopend') : 'Sorteer oplopend'}
-              onclick={() => {
-                if (sort === key) {
-                  sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-                } else {
-                  sort = key;
-                  sortDir = 'asc';
-                }
-                offset = 0;
-                runSearch();
-              }}
-              >{label}{sort === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}</button
-            >
-          {/each}
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Naam</th>
-              <th class="date">Geboren</th>
-              <th class="date">Overleden</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each hits as row}
-              {@const geb = lifeCell(row, 'geboorte')}
-              {@const ovl = lifeCell(row, 'overlijden')}
-              <tr>
-                <td>
-                  <a href="/personen/{row.id}">{listingName(row)}</a>
-                </td>
-                <td class="date">
-                  <span class:estimated={geb.estimated} title={geb.estimated ? 'Geschat uit aanstellingen' : undefined}
-                    >{geb.text}</span
-                  >
-                </td>
-                <td class="date">
-                  <span class:estimated={ovl.estimated} title={ovl.estimated ? 'Geschat uit aanstellingen' : undefined}
-                    >{ovl.text}</span
-                  >
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+        <SortPills
+          bind:sort
+          bind:sortDir
+          options={[
+            ['geslachtsnaam', 'Naam'],
+            ['geboortedatum', 'Geboren'],
+            ['overlijdensdatum', 'Overleden'],
+          ]}
+          onchange={() => {
+            offset = 0;
+            runSearch();
+          }}
+        />
         <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
       </div>
-      <FacetPanel facets={facets} selectedKeys={selectedFacetKeys()} ontoggle={onFacetToggle} />
+      <table>
+        <thead>
+          <tr>
+            <th>Naam</th>
+            <th class="date">Geboren</th>
+            <th class="date">Overleden</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each hits as row}
+            {@const geb = lifeCell(row, 'geboorte')}
+            {@const ovl = lifeCell(row, 'overlijden')}
+            {@const id = Number(row.id)}
+            <tr
+              class="row-clickable"
+              class:row-selected={selectedRowId === id && detailOpen}
+              onclick={() => openDetail(id)}
+            >
+              <td>
+                <a
+                  href="/personen/{row.id}"
+                  onclick={(e) => e.stopPropagation()}>{listingName(row)}</a
+                >
+              </td>
+              <td class="date">
+                <span
+                  class:estimated={geb.estimated}
+                  title={geb.estimated ? 'Geschat uit aanstellingen' : undefined}>{geb.text}</span
+                >
+              </td>
+              <td class="date">
+                <span
+                  class:estimated={ovl.estimated}
+                  title={ovl.estimated ? 'Geschat uit aanstellingen' : undefined}>{ovl.text}</span
+                >
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
     </div>
   {/if}
 </section>
 
-<style>
-  .basic {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background: var(--raa-surface);
-    border: 1px solid var(--raa-line);
-    border-radius: var(--raa-radius);
-    box-shadow: var(--raa-shadow);
-  }
-  .q {
-    flex: 1;
-    min-width: 14rem;
-  }
-  .q input {
-    font-size: 1.05rem;
-    padding: 0.7rem 0.85rem;
-  }
-  .az-hint {
-    margin: 0.35rem 0 0;
-  }
-  .sort-label {
-    font-size: 0.8rem;
-    color: var(--raa-ink-muted);
-    margin-right: 0.15rem;
-  }
-  /* Active sort: ↑ sits above a baseline, ↓ hangs below it */
-  .sort button.asc {
-    box-shadow: inset 0 2px 0 0 var(--raa-accent-bright);
-    padding-top: 0.15rem;
-    padding-bottom: 0.35rem;
-  }
-  .sort button.desc {
-    box-shadow: inset 0 -2px 0 0 var(--raa-accent-bright);
-    padding-top: 0.35rem;
-    padding-bottom: 0.15rem;
-  }
-  :global(span.estimated),
-  .estimated {
-    color: var(--raa-ink-faint);
-  }
-  :global(th.date),
-  :global(td.date),
-  .date {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  .advanced {
-    margin-bottom: 1rem;
-    border: 1px solid var(--raa-line);
-    background: var(--raa-surface);
-    padding: 0.35rem 0.85rem 0.85rem;
-    border-radius: var(--raa-radius);
-  }
-  .advanced summary {
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    padding: 0.55rem 0;
-    color: var(--raa-ink-muted);
-  }
-  .advanced summary:hover {
-    color: var(--raa-accent);
-  }
-  .advanced-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 0.35rem;
-    padding-top: 0.35rem;
-    border-top: 1px solid var(--raa-line);
-  }
-  .layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 16rem;
-    gap: 1.5rem;
-    align-items: start;
-  }
-  .results {
-    min-width: 0;
-  }
-  .active {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    list-style: none;
-    margin: 0 0 1rem;
-    padding: 0;
-  }
-  .active li {
-    background: var(--raa-accent-soft);
-    border: 1px solid var(--raa-chip-border);
-    border-radius: 999px;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.82rem;
-    font-weight: 500;
-  }
-  .active .clear-all {
-    background: transparent;
-    border: 0;
-  }
-  .active .clear-all button {
-    border: 0;
-    background: transparent;
-    color: var(--raa-ink-muted);
-    text-decoration: underline;
-    text-underline-offset: 0.15em;
-    padding: 0.2rem 0.35rem;
-    font-size: 0.82rem;
-  }
-  .x {
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    margin-left: 0.15rem;
-    color: var(--raa-ink-muted);
-  }
-  @media (max-width: 800px) {
-    .layout {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
+<Drawer bind:open={refineOpen} title="Verfijnen">
+  <FacetPanel
+    embedded
+    facets={facets}
+    selectedKeys={selectedFacetKeys()}
+    ontoggle={onFacetToggle}
+  />
+  <div class="refine-advanced">
+    <h4>Meer filters</h4>
+    <fieldset class="box">
+      <legend>Geboorte en overlijden</legend>
+      <p class="hint">EDTF, bijv. <code>1700/1750</code>, <code>../1800</code></p>
+      <div class="grid2">
+        <label>Geboorte <input bind:value={geboorte} placeholder="1700/1750" /></label>
+        <label>Overlijden <input bind:value={overlijden} placeholder="../1800" /></label>
+      </div>
+      <div class="radios">
+        <label><input type="radio" bind:group={dateMode} value="incl_shadow" /> incl. geschatte jaartallen</label>
+        <label><input type="radio" bind:group={dateMode} value="exact" /> zoek exacte datums</label>
+      </div>
+    </fieldset>
+    <fieldset class="box">
+      <legend>Aanstellingsdatum</legend>
+      <div class="grid2">
+        <label>Van <input bind:value={van} placeholder="1750" /></label>
+        <label>Tot <input bind:value={tot} placeholder="1770" /></label>
+      </div>
+    </fieldset>
+    <fieldset class="box">
+      <legend>Functie en instelling</legend>
+      <div class="grid2">
+        <ChipSuggest label="Functie" field="functie" bind:selected={functies} bind:match={functieMatch} />
+        <ChipSuggest
+          label="Instelling"
+          field="instelling"
+          bind:selected={instellingen}
+          bind:match={instellingMatch}
+        />
+      </div>
+    </fieldset>
+    <fieldset class="box">
+      <legend>Vertegenwoordiging</legend>
+      <div class="grid3">
+        <ChipSuggest label="Provinciaal" field="provincie" bind:selected={provincies} showMatch={false} />
+        <ChipSuggest label="Regionaal" field="regio" bind:selected={regions} showMatch={false} />
+        <ChipSuggest label="Lokaal" field="lokaal" bind:selected={lokalen} showMatch={false} />
+      </div>
+    </fieldset>
+    <StandAdel bind:standIds bind:adelOnly />
+    <button type="button" class="primary" onclick={submit} disabled={loading}>Filters toepassen</button>
+  </div>
+</Drawer>
+
+<PersoonDetailDrawer bind:open={detailOpen} bind:personId={detailPersonId} />

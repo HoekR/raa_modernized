@@ -25,3 +25,11 @@ def test_text_search_patterns_wildcards():
     patterns = text_search_patterns('de*g "van der"')
     assert "%de%g%" in patterns or any("de" in p for p in patterns)
     assert "van der" in patterns
+
+
+def test_text_search_patterns_single_star_suffix():
+    assert text_search_patterns("wasse*") == ["wasse%"]
+
+
+def test_text_search_patterns_single_question_mark():
+    assert text_search_patterns("gansne?") == ["gansne_"]

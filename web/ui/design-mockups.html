@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="archive">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAA UI refinement — layout mockups</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --raa-font: 'Public Sans', system-ui, sans-serif;
+      --raa-radius: 2px;
+    }
+    :root, [data-theme='archive'] {
+      --raa-ink: #1e2a32;
+      --raa-ink-muted: #4a5a66;
+      --raa-ink-faint: #7a8a96;
+      --raa-paper: #f3f5f6;
+      --raa-surface: #ffffff;
+      --raa-line: #dde3e8;
+      --raa-line-strong: #c5cdd4;
+      --raa-accent: #2f6f8f;
+      --raa-accent-bright: #3d8aad;
+      --raa-accent-soft: #d5e6ef;
+      --raa-accent-softer: #e8f0f4;
+      --raa-header-elevated: #2a3842;
+      --raa-shadow: 0 1px 0 rgb(30 42 50 / 0.04), 0 8px 24px rgb(30 42 50 / 0.06);
+    }
+    [data-theme='copper'] {
+      --raa-ink: #2b2b2b;
+      --raa-ink-muted: #5c5c5c;
+      --raa-ink-faint: #8a8a8a;
+      --raa-paper: #f4f3f1;
+      --raa-surface: #ffffff;
+      --raa-line: #e4e2de;
+      --raa-line-strong: #cfcbc4;
+      --raa-accent: hsl(32 95% 52%);
+      --raa-accent-bright: hsl(32 95% 64%);
+      --raa-accent-soft: hsl(32 65% 90%);
+      --raa-accent-softer: hsl(32 55% 95%);
+      --raa-header-elevated: #3a3a3a;
+      --raa-shadow: 0 1px 0 rgb(43 43 43 / 0.04), 0 8px 24px rgb(43 43 43 / 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--raa-font);
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--raa-ink);
+      background: var(--raa-paper);
+    }
+    .doc-header {
+      background: var(--raa-header-elevated);
+      color: #fff;
+      padding: 1rem 1.5rem;
+    }
+    .doc-header h1 { margin: 0 0 0.25rem; font-size: 1.15rem; font-weight: 600; }
+    .doc-header p { margin: 0; font-size: 0.85rem; opacity: 0.85; }
+    .picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 1rem 1.5rem;
+      background: var(--raa-surface);
+      border-bottom: 1px solid var(--raa-line);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      align-items: center;
+    }
+    .picker span { font-weight: 600; font-size: 0.85rem; color: var(--raa-ink-muted); margin-right: 0.5rem; }
+    .picker label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.85rem;
+      border: 1px solid var(--raa-line-strong);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: var(--raa-surface);
+    }
+    #v-a:checked ~ .picker label[for="v-a"],
+    #v-b:checked ~ .picker label[for="v-b"],
+    #v-c:checked ~ .picker label[for="v-c"],
+    #v-d:checked ~ .picker label[for="v-d"] {
+      background: var(--raa-ink);
+      border-color: var(--raa-ink);
+      color: #fff;
+    }
+    .content { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+    .variant { display: none; }
+    #v-a:checked ~ .content .variant-a,
+    #v-b:checked ~ .content .variant-b,
+    #v-c:checked ~ .content .variant-c,
+    #v-d:checked ~ .content .variant-d { display: block; }
+    .content.wide { max-width: 1400px; }
+    .mock-section {
+      margin-bottom: 2.5rem;
+    }
+    .mock-section > h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--raa-accent);
+      margin: 0 0 0.75rem;
+      font-weight: 700;
+    }
+    .mock-frame {
+      background: var(--raa-surface);
+      border: 1px solid var(--raa-line);
+      border-radius: var(--raa-radius);
+      box-shadow: var(--raa-shadow);
+      overflow: hidden;
+    }
+    .mock-title {
+      padding: 0.65rem 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--raa-line);
+      background: var(--raa-accent-softer);
+      font-size: 0.95rem;
+    }
+    .mock-body { padding: 1rem; }
+    /* shared mock elements */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+    .toolbar input[type="text"] {
+      flex: 1;
+      min-width: 12rem;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--raa-line-strong);
+      border-radius: var(--raa-radius);
+      font: inherit;
+    }
+    .btn {
+      padding: 0.5rem 0.85rem;
+      border: 1px solid var(--raa-ink);
+      background: var(--raa-ink);
+      color: #fff;
+      border-radius: var(--raa-radius);
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .btn-ghost {
+      background: var(--raa-surface);
+      color: var(--raa-ink);
+      border-color: var(--raa-line-strong);
+      font-weight: 500;
+    }
+    .az {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      margin-top: 0.65rem;
+    }
+    .az a, .az span {
+      display: inline-block;
+      min-width: 1.5rem;
+      text-align: center;
+      padding: 0.15rem 0.3rem;
+      font-size: 0.78rem;
+      text-decoration: none;
+      color: var(--raa-ink-muted);
+      border: 1px solid transparent;
+      border-radius: var(--raa-radius);
+    }
+    .az a:hover, .az .on {
+      background: var(--raa-accent-soft);
+      border-color: var(--raa-chip-border, #a8c5d6);
+      color: var(--raa-ink);
+    }
+    .az .on { font-weight: 700; color: var(--raa-accent); }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.65rem 0; }
+    .chip {
+      background: var(--raa-accent-soft);
+      border: 1px solid #a8c5d6;
+      border-radius: 999px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.78rem;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin: 0.75rem 0 0.5rem;
+      font-size: 0.82rem;
+      color: var(--raa-ink-muted);
+    }
+    .sort-pills { display: flex; gap: 0.25rem; }
+    .sort-pills span {
+      padding: 0.15rem 0.5rem;
+      border: 1px solid var(--raa-line);
+      border-radius: 999px;
+      font-size: 0.75rem;
+    }
+    .sort-pills .active { background: var(--raa-ink); color: #fff; border-color: var(--raa-ink); }
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+      font-size: 0.88rem;
+    }
+    table.data th, table.data td {
+      border-bottom: 1px solid var(--raa-line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.data th {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--raa-ink-muted);
+      background: var(--raa-accent-softer);
+      font-weight: 600;
+    }
+    table.data tr:last-child td { border-bottom: 0; }
+    table.data td.date, table.data th.date { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .estimated { color: var(--raa-ink-faint); }
+    table.data a { color: var(--raa-ink); }
+    table.data a:hover { color: var(--raa-accent); }
+    /* layout A */
+    .layout-a-search { display: grid; grid-template-columns: 1fr; gap: 0; }
+    .layout-a-search .main { padding: 0; }
+    .drawer-hint {
+      margin-top: 0.75rem;
+      padding: 0.65rem 0.85rem;
+      background: var(--raa-accent-softer);
+      border: 1px dashed var(--raa-accent-bright);
+      border-radius: var(--raa-radius);
+      font-size: 0.8rem;
+      color: var(--raa-ink-muted);
+    }
+    /* layout B */
+    .layout-b-search {
+      display: grid;
+      grid-template-columns: 11rem 1fr;
+      gap: 0;
+      min-height: 320px;
+    }
+    .facet-sidebar {
+      background: var(--raa-accent-softer);
+      border-right: 1px solid var(--raa-line);
+      padding: 0.65rem 0.75rem;
+      font-size: 0.78rem;
+    }
+    .facet-sidebar h4 {
+      margin: 0.75rem 0 0.35rem;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--raa-ink-faint);
+    }
+    .facet-sidebar h4:first-child { margin-top: 0; }
+    .facet-sidebar ul { margin: 0; padding: 0; list-style: none; }
+    .facet-sidebar li { padding: 0.12rem 0; color: var(--raa-ink-muted); }
+    .facet-sidebar li strong { color: var(--raa-ink); font-weight: 600; }
+    .layout-b-main { padding: 0.85rem 1rem; }
+    /* layout C */
+    .band {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--raa-line);
+    }
+    .band:last-child { border-bottom: 0; }
+    .band-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--raa-ink-faint);
+      margin-bottom: 0.45rem;
+    }
+    .band.muted { background: var(--raa-accent-softer); }
+    .facet-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      font-size: 0.78rem;
+    }
+    .facet-row h4 { margin: 0 0 0.35rem; font-size: 0.65rem; text-transform: uppercase; color: var(--raa-ink-faint); }
+    .facet-row ul { margin: 0; padding: 0; list-style: none; color: var(--raa-ink-muted); }
+    /* detail shared */
+    .detail-hero {
+      padding: 1rem 1rem 0.75rem;
+      border-bottom: 3px solid var(--raa-accent-bright);
+    }
+    .detail-kicker {
+      margin: 0 0 0.25rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--raa-accent);
+    }
+    .detail-hero h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+    .detail-hero .sub { margin: 0.25rem 0 0; color: var(--raa-ink-muted); font-size: 0.9rem; }
+    .detail-block { padding: 0.85rem 1rem; border-bottom: 1px solid var(--raa-line); }
+    .detail-block:last-child { border-bottom: 0; }
+    .detail-block h3 { margin: 0 0 0.5rem; font-size: 0.85rem; font-weight: 600; }
+    table.facts { width: auto; min-width: 16rem; }
+    table.facts th { width: 6.5rem; font-weight: 500; color: var(--raa-ink-faint); background: transparent; text-transform: none; letter-spacing: 0; font-size: 0.82rem; }
+    table.facts td { font-variant-numeric: tabular-nums; }
+    .note {
+      margin-top: 1.5rem;
+      padding: 0.85rem 1rem;
+      background: #fff8e6;
+      border: 1px solid #e8d8a0;
+      border-radius: var(--raa-radius);
+      font-size: 0.85rem;
+    }
+    .note code { background: #fff; padding: 0.1em 0.3em; border-radius: 2px; font-size: 0.9em; }
+    .compare-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--raa-accent);
+      color: #fff;
+      padding: 0.15rem 0.45rem;
+      border-radius: var(--raa-radius);
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+    .compare-tag.chosen { background: var(--raa-accent-bright); }
+    .life-dates {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem 1.5rem;
+      margin: 0.65rem 0 0;
+      padding: 0.65rem 0.85rem;
+      background: var(--raa-accent-softer);
+      border: 1px solid var(--raa-line);
+      border-radius: var(--raa-radius);
+      font-size: 0.88rem;
+    }
+    .life-dates .item label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--raa-ink-faint);
+      margin-bottom: 0.15rem;
+    }
+    .life-dates .item .val {
+      font-variant-numeric: tabular-nums;
+      font-family: var(--raa-font);
+    }
+    .life-dates .item .val.estimated { color: var(--raa-ink-faint); }
+    /* Variant D — drawer layouts */
+    .layout-d-wrap { position: relative; min-height: 340px; }
+    .layout-d-main { padding: 0.85rem 1rem; }
+    .toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    .toolbar-row .left { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; flex: 1; }
+    .drawer-panel {
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 42%;
+      min-width: 16rem;
+      max-width: 22rem;
+      background: var(--raa-surface);
+      border-left: 1px solid var(--raa-line-strong);
+      box-shadow: -8px 0 24px rgb(0 0 0 / 0.08);
+      padding: 0.75rem;
+      font-size: 0.82rem;
+      overflow: auto;
+      z-index: 2;
+    }
+    .drawer-panel h4 {
+      margin: 0.65rem 0 0.35rem;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--raa-ink-faint);
+    }
+    .drawer-panel h4:first-child { margin-top: 0; }
+    .drawer-panel ul { margin: 0; padding: 0; list-style: none; color: var(--raa-ink-muted); }
+    .drawer-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgb(43 43 43 / 0.12);
+      z-index: 1;
+    }
+    .drawer-title {
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--raa-accent);
+      margin-bottom: 0.65rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 2px solid var(--raa-accent-bright);
+    }
+    .row-selected { background: var(--raa-accent-soft) !important; }
+    table.facts td, table.facts th { font-family: var(--raa-font); }
+    table.facts td.date { text-align: left; }
+    .detail-wide { max-width: none; }
+    .drawer-link { font-size: 0.78rem; color: var(--raa-accent); margin-top: 0.65rem; display: inline-block; }
+  </style>
+</head>
+<body>
+
+<input type="radio" name="variant" id="v-a" hidden />
+<input type="radio" name="variant" id="v-b" hidden />
+<input type="radio" name="variant" id="v-c" hidden />
+<input type="radio" name="variant" id="v-d" checked hidden />
+
+<header class="doc-header">
+  <h1>RAA UI refinement — layout mockups</h1>
+  <p>Compare variants A–D · <strong>D = chosen</strong> (Goetgevonden layout + archiefblauw) · Decisions → <code>docs/UI_REFINEMENT_PLAN.md</code></p>
+</header>
+
+<div class="picker">
+  <span>Kies variant:</span>
+  <label for="v-a">A — Toolbar + drawer</label>
+  <label for="v-b">B — Sidebar facets</label>
+  <label for="v-c">C — Stacked sections</label>
+  <label for="v-d">D — Hybrid (chosen) ✓</label>
+</div>
+
+<div class="content">
+
+  <!-- ========== VARIANT A ========== -->
+  <div class="variant variant-a">
+    <p class="note"><strong>Variant A</strong> — Default view is minimal: search toolbar + compact A–Z. Facets and advanced filters live in a drawer (shown here as dashed placeholder). Best for reducing first-screen clutter.</p>
+
+    <div class="mock-section">
+      <h2>Search — Personen <span class="compare-tag">A</span></h2>
+      <div class="mock-frame">
+        <div class="mock-title">Personen zoeken</div>
+        <div class="mock-body layout-a-search">
+          <div class="toolbar">
+            <input type="text" value="aylva" placeholder="Naam (wildcards * ?)" />
+            <button class="btn">Zoeken</button>
+            <button class="btn btn-ghost">Filters ▾</button>
+            <button class="btn btn-ghost">Sort: Naam ↑</button>
+          </div>
+          <div class="az">
+            <span class="on">A</span><a href="#">B</a><a href="#">C</a><a href="#">D</a><a href="#">E</a><a href="#">…</a><a href="#">Z</a>
+          </div>
+          <div class="drawer-hint">↳ Drawer (when “Filters” open): facet checkboxes, stand/adel, advanced date fields, active chips</div>
+          <div class="meta-row">
+            <strong>847 treffers</strong>
+            <span>‹ 1 2 3 … ›</span>
+          </div>
+          <table class="data">
+            <thead>
+              <tr><th>Naam</th><th class="date">Geboren</th><th class="date">Overleden</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><a href="#">Aylva, Tjalling van</a></td><td class="date estimated" title="Geschat uit aanstellingen">1712</td><td class="date estimated">1757</td></tr>
+              <tr><td><a href="#">Aylva, Willem</a></td><td class="date">1688</td><td class="date">1743</td></tr>
+              <tr><td><a href="#">Aylva, Sijbrand</a></td><td class="date estimated">1695</td><td class="date">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-section">
+      <h2>Detail — Persoon <span class="compare-tag">A</span></h2>
+      <div class="mock-frame">
+        <div class="detail-hero">
+          <p class="detail-kicker">Persoon</p>
+          <h1>Aylva, Tjalling van</h1>
+          <p class="sub">Heer van Cornjum</p>
+        </div>
+        <div class="detail-block">
+          <h3>Levensgegevens</h3>
+          <table class="data facts">
+            <tbody>
+              <tr><th>Geboren</th><td class="date estimated">1712</td></tr>
+              <tr><th>Overleden</th><td class="date estimated">1757</td></tr>
+              <tr><th>Stand</th><td>Adel</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="detail-block">
+          <h3>Bovenlokale aanstellingen</h3>
+          <table class="data">
+            <thead>
+              <tr><th>Functie</th><th>Instelling</th><th class="date">Van</th><th class="date">Tot</th><th>Namens</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="#">Gedeputeerde</a></td>
+                <td><a href="#">Staten van Friesland</a></td>
+                <td class="date">1747</td><td class="date">1751</td><td>Friesland</td>
+              </tr>
+              <tr>
+                <td><a href="#">Raad</a></td>
+                <td><a href="#">Hof van Friesland</a></td>
+                <td class="date">1738</td><td class="date">1757</td><td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== VARIANT B ========== -->
+  <div class="variant variant-b">
+    <p class="note"><strong>Variant B</strong> — Closest to current UI: persistent facet sidebar, search + A–Z in main column. Crowding reduced via tighter spacing and unified table chrome.</p>
+
+    <div class="mock-section">
+      <h2>Search — Personen <span class="compare-tag">B</span></h2>
+      <div class="mock-frame">
+        <div class="mock-title">Personen zoeken</div>
+        <div class="layout-b-search">
+          <aside class="facet-sidebar">
+            <h4>Periode</h4>
+            <ul><li><strong>1747–1751</strong> 12k</li><li>All periods 21k</li></ul>
+            <h4>Stand</h4>
+            <ul><li>Ridderschap 4k</li><li>Burger 8k</li></ul>
+            <h4>Functie</h4>
+            <ul><li>Gedeputeerde 890</li><li>Raad 1.2k</li></ul>
+            <h4>Instelling</h4>
+            <ul><li>Staten van Friesland 340</li></ul>
+          </aside>
+          <div class="layout-b-main">
+            <div class="toolbar">
+              <input type="text" value="aylva" />
+              <button class="btn">Zoeken</button>
+            </div>
+            <div class="az">
+              <span class="on">A</span><a href="#">B</a><a href="#">C</a><a href="#">…</a>
+            </div>
+            <details style="margin:0.5rem 0;font-size:0.82rem;color:var(--raa-ink-muted)">
+              <summary style="cursor:pointer;font-weight:600">Meer filters</summary>
+              <p style="margin:0.35rem 0">Datums, typeahead chips, stand/adel…</p>
+            </details>
+            <div class="chips"><span class="chip">Adel ×</span><span class="chip">Staten van Friesland ×</span></div>
+            <div class="meta-row">
+              <strong>847 treffers</strong>
+              <div class="sort-pills"><span class="active">Naam ↑</span><span>Geboren</span><span>Overleden</span></div>
+            </div>
+            <table class="data">
+              <thead><tr><th>Naam</th><th class="date">Geboren</th><th class="date">Overleden</th></tr></thead>
+              <tbody>
+                <tr><td><a href="#">Aylva, Tjalling van</a></td><td class="date estimated">1712</td><td class="date estimated">1757</td></tr>
+                <tr><td><a href="#">Aylva, Willem</a></td><td class="date">1688</td><td class="date">1743</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-section">
+      <h2>Detail — Persoon <span class="compare-tag">B</span></h2>
+      <div class="mock-frame">
+        <div class="detail-hero">
+          <p class="detail-kicker">Persoon</p>
+          <h1>Aylva, Tjalling van</h1>
+        </div>
+        <div class="detail-block">
+          <table class="data facts">
+            <tbody>
+              <tr><th>Geboren</th><td class="date estimated">1712</td></tr>
+              <tr><th>Overleden</th><td class="date estimated">1757</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="detail-block">
+          <h3>Bovenlokale aanstellingen</h3>
+          <table class="data">
+            <thead><tr><th>Functie</th><th>Instelling</th><th class="date">Van</th><th class="date">Tot</th><th>Namens</th></tr></thead>
+            <tbody>
+              <tr><td><a href="#">Gedeputeerde</a></td><td><a href="#">Staten van Friesland</a></td><td class="date">1747</td><td class="date">1751</td><td>Friesland</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== VARIANT C ========== -->
+  <div class="variant variant-c">
+    <p class="note"><strong>Variant C</strong> — Explicit horizontal bands label each region (Zoeken / Blader / Filters / Resultaten / Verfijnen). Facets move below results; maximum clarity, more scroll.</p>
+
+    <div class="mock-section">
+      <h2>Search — Personen <span class="compare-tag">C</span></h2>
+      <div class="mock-frame">
+        <div class="mock-title">Personen zoeken</div>
+        <div class="band">
+          <div class="band-label">Zoeken</div>
+          <div class="toolbar">
+            <input type="text" value="aylva" />
+            <button class="btn">Zoeken</button>
+          </div>
+        </div>
+        <div class="band muted">
+          <div class="band-label">Blader A–Z</div>
+          <div class="az" style="margin:0">
+            <span class="on">A</span><a href="#">B</a><a href="#">C</a><a href="#">D</a><a href="#">…</a><a href="#">Z</a>
+          </div>
+        </div>
+        <div class="band">
+          <div class="band-label">Filters</div>
+          <div class="chips" style="margin:0 0 0.35rem"><span class="chip">Adel ×</span></div>
+          <button class="btn btn-ghost" style="font-size:0.78rem;padding:0.3rem 0.6rem">Meer filters ▾</button>
+        </div>
+        <div class="band">
+          <div class="band-label">Resultaten</div>
+          <div class="meta-row" style="margin-top:0">
+            <strong>847 treffers</strong>
+            <div class="sort-pills"><span class="active">Naam ↑</span><span>Geboren</span><span>Overleden</span></div>
+          </div>
+          <table class="data">
+            <thead><tr><th>Naam</th><th class="date">Geboren</th><th class="date">Overleden</th></tr></thead>
+            <tbody>
+              <tr><td><a href="#">Aylva, Tjalling van</a></td><td class="date estimated">1712</td><td class="date estimated">1757</td></tr>
+              <tr><td><a href="#">Aylva, Willem</a></td><td class="date">1688</td><td class="date">1743</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="band muted">
+          <div class="band-label">Verfijnen (facetten)</div>
+          <div class="facet-row">
+            <div><h4>Periode</h4><ul><li>1747–1751</li><li>All</li></ul></div>
+            <div><h4>Stand</h4><ul><li>Ridderschap</li><li>Burger</li></ul></div>
+            <div><h4>Functie</h4><ul><li>Gedeputeerde</li><li>Raad</li></ul></div>
+            <div><h4>Instelling</h4><ul><li>Staten van Friesland</li></ul></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-section">
+      <h2>Detail — Persoon <span class="compare-tag">C</span></h2>
+      <div class="mock-frame">
+        <div class="detail-hero">
+          <p class="detail-kicker">Persoon</p>
+          <h1>Aylva, Tjalling van</h1>
+          <p class="sub">Heer van Cornjum</p>
+        </div>
+        <div class="band">
+          <div class="band-label">Levensgegevens</div>
+          <table class="data facts">
+            <tbody>
+              <tr><th>Geboren</th><td class="date estimated">1712</td></tr>
+              <tr><th>Overleden</th><td class="date estimated">1757</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="band">
+          <div class="band-label">Bovenlokale aanstellingen</div>
+          <table class="data">
+            <thead><tr><th>Functie</th><th>Instelling</th><th class="date">Van</th><th class="date">Tot</th><th>Namens</th></tr></thead>
+            <tbody>
+              <tr><td><a href="#">Gedeputeerde</a></td><td><a href="#">Staten van Friesland</a></td><td class="date">1747</td><td class="date">1751</td><td>Friesland</td></tr>
+              <tr><td><a href="#">Raad</a></td><td><a href="#">Hof van Friesland</a></td><td class="date">1738</td><td class="date">1757</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== VARIANT D (chosen) ========== -->
+  <div class="variant variant-d">
+    <p class="note"><strong>Variant D — chosen.</strong> Archiefblauw theme; Goetgevonden-style layout density. Minimal search bar; B-style sort pills; results full-width. <em>Verfijnen</em> and row <em>detail</em> drawers slide over results. Detail card wider; geboren + overleden on one line.</p>
+
+    <div class="mock-section">
+      <h2>Search — Personen (refine drawer open) <span class="compare-tag chosen">D</span></h2>
+      <div class="mock-frame">
+        <div class="mock-title">Personen zoeken</div>
+        <div class="layout-d-wrap">
+          <div class="drawer-backdrop"></div>
+          <div class="layout-d-main">
+            <div class="toolbar-row">
+              <div class="left">
+                <input type="text" value="aylva" style="flex:1;min-width:10rem;padding:0.5rem 0.65rem;border:1px solid var(--raa-line-strong);border-radius:var(--raa-radius);font:inherit" />
+                <button class="btn">Zoeken</button>
+                <div class="az" style="margin:0">
+                  <span class="on">A</span><a href="#">B</a><a href="#">C</a><a href="#">…</a>
+                </div>
+              </div>
+              <button class="btn btn-ghost">Verfijnen ▾</button>
+            </div>
+            <div class="chips"><span class="chip">Adel ×</span></div>
+            <div class="meta-row">
+              <strong>847 treffers</strong>
+              <div class="sort-pills"><span class="active">Naam ↑</span><span>Geboren</span><span>Overleden</span></div>
+              <span>‹ 1 2 ›</span>
+            </div>
+            <table class="data">
+              <thead><tr><th>Naam</th><th class="date">Geboren</th><th class="date">Overleden</th></tr></thead>
+              <tbody>
+                <tr class="row-selected"><td>Aylva, Tjalling van</td><td class="date estimated">1712</td><td class="date estimated">1757</td></tr>
+                <tr><td>Aylva, Willem</td><td class="date">1688</td><td class="date">1743</td></tr>
+                <tr><td>Aylva, Sijbrand</td><td class="date estimated">1695</td><td class="date">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="drawer-panel">
+            <div class="drawer-title">Verfijnen</div>
+            <h4>Periode</h4>
+            <ul><li><strong>1747–1751</strong> (12k)</li><li>Alle perioden</li></ul>
+            <h4>Stand</h4>
+            <ul><li>Ridderschap</li><li>Burger</li></ul>
+            <h4>Functie</h4>
+            <ul><li>Gedeputeerde</li><li>Raad</li></ul>
+            <h4>Meer filters</h4>
+            <p style="margin:0.35rem 0;color:var(--raa-ink-muted)">Geboorte/overlijden EDTF, typeahead chips, stand/adel…</p>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-section">
+      <h2>Search — detail drawer (row click) <span class="compare-tag chosen">D</span></h2>
+      <div class="mock-frame">
+        <div class="layout-d-wrap">
+          <div class="drawer-backdrop"></div>
+          <div class="layout-d-main" style="opacity:0.55">
+            <table class="data"><tbody><tr class="row-selected"><td>Aylva, Tjalling van</td><td class="date">1712</td><td class="date">1757</td></tr></tbody></table>
+          </div>
+          <aside class="drawer-panel" style="width:48%;max-width:28rem">
+            <div class="drawer-title">Persoon</div>
+            <h1 style="margin:0 0 0.5rem;font-size:1.15rem">Aylva, Tjalling van</h1>
+            <div class="life-dates">
+              <div class="item"><label>Geboren</label><div class="val estimated">1712</div></div>
+              <div class="item"><label>Overleden</label><div class="val estimated">1757</div></div>
+              <div class="item"><label>Stand</label><div class="val">Adel</div></div>
+            </div>
+            <h4 style="margin-top:0.85rem">Bovenlokale aanstellingen</h4>
+            <table class="data">
+              <thead><tr><th>Functie</th><th>Instelling</th><th class="date">Van</th><th class="date">Tot</th></tr></thead>
+              <tbody>
+                <tr><td>Gedeputeerde</td><td>Staten van Friesland</td><td class="date">1747</td><td class="date">1751</td></tr>
+              </tbody>
+            </table>
+            <a class="drawer-link" href="#">Volledige pagina →</a>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-section detail-wide">
+      <h2>Detail — full page (wide) <span class="compare-tag chosen">D</span></h2>
+      <div class="mock-frame">
+        <div class="detail-hero">
+          <p class="detail-kicker">Persoon</p>
+          <h1>Aylva, Tjalling van</h1>
+          <p class="sub">Heer van Cornjum</p>
+        </div>
+        <div class="detail-block">
+          <div class="life-dates">
+            <div class="item"><label>Geboren</label><div class="val estimated">1712</div></div>
+            <div class="item"><label>Overleden</label><div class="val estimated">1757</div></div>
+            <div class="item"><label>Stand</label><div class="val">Adel</div></div>
+          </div>
+        </div>
+        <div class="detail-block">
+          <h3>Bovenlokale aanstellingen</h3>
+          <table class="data">
+            <thead><tr><th>Functie</th><th>Instelling</th><th class="date">Van</th><th class="date">Tot</th><th>Namens</th></tr></thead>
+            <tbody>
+              <tr><td>Gedeputeerde</td><td>Staten van Friesland</td><td class="date">1747</td><td class="date">1751</td><td>Friesland</td></tr>
+              <tr><td>Raad</td><td>Hof van Friesland</td><td class="date">1738</td><td class="date">1757</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="detail-block" style="background:var(--raa-accent-softer)">
+          <h3 style="color:var(--raa-ink-muted);font-size:0.8rem">Aliassen, bronnen, opmerkingen → drawer</h3>
+          <p style="margin:0;font-size:0.82rem;color:var(--raa-ink-faint)">Secondary sections collapsed; open on demand</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
