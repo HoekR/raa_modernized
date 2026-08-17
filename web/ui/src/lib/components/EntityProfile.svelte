@@ -17,18 +17,20 @@
   </header>
 
   {#if profile.stats?.length}
-    <dl class="detail-stats">
+    <div class="life-dates">
       {#each profile.stats as stat}
-        <dt>{stat.label}</dt>
-        <dd>
-          {#if stat.html}
-            {@html modernizeHtml(String(stat.html))}
-          {:else}
-            {stat.value}
-          {/if}
-        </dd>
+        <div class="item">
+          <span class="field-label">{stat.label}</span>
+          <div class="val">
+            {#if stat.html}
+              {@html modernizeHtml(String(stat.html))}
+            {:else}
+              {stat.value}
+            {/if}
+          </div>
+        </div>
       {/each}
-    </dl>
+    </div>
   {/if}
 
   {#if profile.actions?.length}
@@ -41,35 +43,37 @@
 
   {#each profile.sections || [] as section}
     {#if section.html || section.text}
-      <section class="detail-section">
-        <h2>{section.title}</h2>
-        <div class="detail-prose">
+      <details class="detail-collapsible">
+        <summary>{section.title}</summary>
+        <div class="detail-collapsible-body detail-prose">
           {#if section.html}
             {@html modernizeHtml(section.html)}
           {:else}
             <p>{section.text}</p>
           {/if}
         </div>
-      </section>
+      </details>
     {/if}
   {/each}
 
   {#each profile.related || [] as group}
     {#if group.items?.length}
-      <section class="detail-section">
-        <h2>{group.title}</h2>
-        <ul class="detail-related">
-          {#each group.items as item}
-            <li>
-              <a href={modernizeHref(item.href)}>
-                {item.naam}{#if item.aanstelling_count != null}
-                  <span class="meta">({item.aanstelling_count})</span>{/if}{#if item.meta}
-                  <span class="meta"> — {item.meta}</span>{/if}
-              </a>
-            </li>
-          {/each}
-        </ul>
-      </section>
+      <details class="detail-collapsible">
+        <summary>{group.title} ({group.items.length})</summary>
+        <div class="detail-collapsible-body">
+          <ul class="detail-related">
+            {#each group.items as item}
+              <li>
+                <a href={modernizeHref(item.href)}>
+                  {item.naam}{#if item.aanstelling_count != null}
+                    <span class="meta">({item.aanstelling_count})</span>{/if}{#if item.meta}
+                    <span class="meta"> — {item.meta}</span>{/if}
+                </a>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      </details>
     {/if}
   {/each}
 </article>

@@ -37,6 +37,8 @@
   <p class="err">{error}</p>
   <a class="detail-back" href="/instellingen">← Terug naar instellingen</a>
 {:else if profile}
-  <a class="detail-back" href="/instellingen">← Terug naar instellingen</a>
-  <EntityProfile {profile} />
+  <div class="detail-route">
+    <a class="detail-back" href="/instellingen">← Terug naar instellingen</a>
+    <EntityProfile {profile} />
+  </div>
 {/if}

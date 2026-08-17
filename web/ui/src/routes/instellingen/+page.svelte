@@ -3,6 +3,9 @@
   import Pagination from '$lib/components/Pagination.svelte';
   import { PAGE_SIZE, periodKey } from '$lib/period';
   import { browseAz, searchEntity } from '$lib/search';
+  import { SearchRunGuard } from '$lib/searchRunner';
+
+  const searchGuard = new SearchRunGuard();
 
   let q = $state('');
   let letter = $state<string | null>(null);
@@ -13,28 +16,30 @@
   let loading = $state(false);
 
   async function runSearch() {
+    const token = searchGuard.begin();
     loading = true;
     error = null;
     try {
+      let data;
       if (letter && !q.trim()) {
-        const data = await browseAz('instellingen', { letter, from: offset, size: PAGE_SIZE });
-        total = data.total;
-        hits = data.hits;
+        data = await browseAz('instellingen', { letter, from: offset, size: PAGE_SIZE });
       } else {
-        const data = await searchEntity('instellingen', {
+        data = await searchEntity('instellingen', {
           q: q.trim() || null,
           from: offset,
           size: PAGE_SIZE,
         });
-        total = data.total;
-        hits = data.hits;
       }
+      if (!searchGuard.isCurrent(token)) return;
+      total = data.total;
+      hits = data.hits;
     } catch (e) {
+      if (!searchGuard.isCurrent(token)) return;
       error = e instanceof Error ? e.message : String(e);
       total = null;
       hits = [];
     } finally {
-      loading = false;
+      if (searchGuard.isCurrent(token)) loading = false;
     }
   }
 
@@ -51,41 +56,45 @@
   });
 </script>
 
-<section>
+<section class="search-page">
   <h2>Instellingen zoeken</h2>
 
   <form
-    class="basic"
+    class="search-toolbar"
     onsubmit={(e) => {
       e.preventDefault();
       submit();
     }}
   >
-    <label class="q">
-      Naam (wildcards * ?)
-      <input bind:value={q} placeholder="bijv. raad*" />
-    </label>
-    <button type="submit" disabled={loading}>{loading ? 'Zoeken…' : 'Zoeken'}</button>
+    <div class="search-toolbar-left">
+      <label class="q">
+        Naam (wildcards * ?)
+        <input bind:value={q} placeholder="bijv. raad*" />
+      </label>
+      <button type="submit" disabled={loading}>{loading ? 'Zoeken…' : 'Zoeken'}</button>
+      <AzBrowser
+        entity="instellingen"
+        compact
+        bind:letter
+        onchange={() => {
+          q = '';
+          offset = 0;
+          runSearch();
+        }}
+      />
+    </div>
   </form>
-
-  <p class="hint az-hint">Of blader A–Z (periode-scoped):</p>
-  <AzBrowser
-    entity="instellingen"
-    bind:letter
-    onchange={() => {
-      q = '';
-      offset = 0;
-      runSearch();
-    }}
-  />
 
   {#if error}
     <p class="err">{error}</p>
   {/if}
+
   {#if total !== null}
-    <div class="results-panel">
-      <p class="count">{total} treffers</p>
-      <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+    <div class="search-results">
+      <div class="results-meta">
+        <p class="count">{total} treffers</p>
+        <Pagination {total} {offset} onpage={(o) => { offset = o; runSearch(); }} />
+      </div>
       <table>
         <thead>
           <tr>
@@ -108,33 +117,3 @@
     </div>
   {/if}
 </section>
-
-<style>
-  .basic {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-    padding: 1rem;
-    background: var(--raa-surface);
-    border: 1px solid var(--raa-line);
-    border-radius: var(--raa-radius);
-    box-shadow: var(--raa-shadow);
-  }
-  .q {
-    flex: 1;
-    min-width: 14rem;
-  }
-  .az-hint {
-    margin: 0.35rem 0 0;
-  }
-  .results-panel {
-    margin-top: 0.75rem;
-  }
-  .num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    width: 8rem;
-  }
-</style>

@@ -6,10 +6,12 @@
     entity,
     letter = $bindable(null as string | null),
     onchange,
+    compact = false,
   }: {
     entity: 'personen' | 'instellingen' | 'functies';
     letter?: string | null;
     onchange?: () => void;
+    compact?: boolean;
   } = $props();
 
   let counts = $state<Record<string, number>>({});
@@ -38,7 +40,7 @@
   const letters = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
 </script>
 
-<div class="az">
+<div class="az" class:compact>
   <button type="button" class:active={letter == null} onclick={() => select(null)}>Alles</button>
   {#each letters as L}
     <button
@@ -57,6 +59,15 @@
     flex-wrap: wrap;
     gap: 0.3rem;
     margin: 0.5rem 0 1rem;
+  }
+  .az.compact {
+    margin: 0;
+    gap: 0.2rem;
+  }
+  .az.compact button {
+    min-width: 1.5rem;
+    padding: 0.2rem 0.3rem;
+    font-size: 0.75rem;
   }
   button {
     min-width: 1.85rem;

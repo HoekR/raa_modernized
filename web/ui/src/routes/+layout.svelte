@@ -23,7 +23,7 @@
       const current = $periodKey;
       if (current !== 'all' && periods.length && !periods.some((p) => p.key === current)) {
         periodKey.set(periods[0].key);
-      } else if (!$periodKey && periods.length) {
+      } else if (!current && periods.length) {
         periodKey.set(periods[0].key);
       }
     } catch {
@@ -64,9 +64,8 @@
 
 <div class="pilot-bar">
   <div class="pilot-inner">
-    <p>
-      Zoeken met facetten + detailpagina’s. Oude pilot:
-      <a href="http://127.0.0.1:8000/static/index.html">/static/</a>
+    <p class="pilot-note">
+      Pilot: <a href="http://127.0.0.1:8000/static/index.html">/static/</a>
     </p>
     <label class="theme-pick">
       Kleuren
@@ -187,14 +186,20 @@
   }
 
   .pilot-inner {
-    max-width: var(--raa-max);
+    max-width: var(--raa-max-detail);
     margin: 0 auto;
-    padding: 0.4rem 1.5rem;
+    padding: 0.25rem 1.5rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem 1.5rem;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .pilot-note {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--raa-ink-faint);
   }
 
   .pilot-inner p {
@@ -228,6 +233,10 @@
     max-width: var(--raa-max);
     margin: 0 auto;
     padding: 1.5rem 1.5rem 3.5rem;
+  }
+
+  :global(.site-main:has(.detail-route)) {
+    max-width: var(--raa-max-detail);
   }
 
   :global(.site-header .period-select) {
