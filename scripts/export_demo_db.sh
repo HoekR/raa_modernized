@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:-${ROOT}/raa_demo.dump}"
+LEGACY_CONTAINER="${RAA_PG_CONTAINER:-raa_pg}"
 
 compose() {
   if docker compose version >/dev/null 2>&1; then
@@ -14,6 +15,12 @@ compose() {
     echo "Need docker compose or docker-compose." >&2
     exit 1
   fi
+}
+
+compose_with() {
+  COMPOSE_FILE="$1"
+  shift
+  compose "$@"
 }
 
 pick_compose_file() {
@@ -29,27 +36,31 @@ pick_compose_file() {
       return
     fi
   done
-  # Default: local dev export after ./scripts/dev.sh
   echo "$dev"
 }
 
-compose_with() {
-  COMPOSE_FILE="$1"
-  shift
-  compose "$@"
+legacy_pg_running() {
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$LEGACY_CONTAINER"
 }
 
-COMPOSE_FILE="$(pick_compose_file)"
+compose_pg_running() {
+  compose ps --status running db 2>/dev/null | grep -q db
+}
 
-if ! compose ps --status running db 2>/dev/null | grep -q db; then
+if legacy_pg_running; then
+  echo "Using legacy container: ${LEGACY_CONTAINER}"
+  echo "Exporting to ${OUT} ..."
+  docker exec "$LEGACY_CONTAINER" pg_dump -U raa -Fc raa_modernized > "$OUT"
+elif COMPOSE_FILE="$(pick_compose_file)" && compose_pg_running; then
+  echo "Using compose file: ${COMPOSE_FILE}"
+  echo "Exporting to ${OUT} ..."
+  compose exec db pg_dump -U raa -Fc raa_modernized > "$OUT"
+else
   echo "Postgres not running. Start with one of:" >&2
   echo "  ./scripts/dev.sh --db-only" >&2
   echo "  ./scripts/surf_stack.sh up-dev   # db only path" >&2
   exit 1
 fi
 
-echo "Using compose file: ${COMPOSE_FILE}"
-echo "Exporting to ${OUT} ..."
-compose exec -T db pg_dump -U raa -Fc raa_modernized > "$OUT"
-echo "Done. Copy to SURF: scp ${OUT} user@surf-host:~/raa_modernized/"
+echo "Done. Copy to SURF: scp ${OUT} user@surf-host:/data/raa_modernized/"
 echo "Restore there: ./scripts/restore_demo_db.sh raa_demo.dump"
