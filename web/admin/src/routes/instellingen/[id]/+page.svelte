@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn } from '$lib/auth';
   import {
     fetchToelichtingContext,
@@ -20,7 +21,7 @@
 
   async function load(id: string) {
     if (!isLoggedIn()) {
-      goto('/login');
+      goto(appPath('/login'));
       return;
     }
     loading = true;
@@ -75,7 +76,7 @@
   }
 </script>
 
-<a href="/">← Dashboard</a>
+<a href={appPath('/')}>← Dashboard</a>
 
 {#if loading}
   <p class="hint">Laden…</p>

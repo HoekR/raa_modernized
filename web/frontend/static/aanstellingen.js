@@ -105,7 +105,7 @@ async function runSearch() {
     instelling_match: matchModeValue(searchForm, "instelling"),
     from: searchOffset,
     size: PAGE_SIZE,
-    sort: searchForm.sort.value || "instelling",
+    sort: searchForm.sort.value || "van",
     group_by: null,
   };
   const res = await fetch("/api/search/aanstellingen", {

@@ -98,8 +98,10 @@ def format_opmerkingen_html(text: str | None) -> str | None:
 
 ENTITY_SPAN_CAVEAT_HTML = (
     '<p class="span-caveat">Vroegste en laatste <strong>gedateerde aanstelling in het bestand</strong>. '
-    "Dezelfde functienaam kan in meerdere instellingen voorkomen; onderbrekingen tussen contexten "
-    "worden niet ingevuld. Zie de "
+    "Dit zijn de uiterste jaren waarin deze functie of instelling in de data voorkomt — "
+    "niet per se een ononderbroken zittingsperiode. Dezelfde functienaam kan in meerdere "
+    "instellingen voorkomen; jaren zonder treffer tussen twee periodes worden niet als "
+    "onderbreking gemarkeerd. Zie de "
     '<a href="https://resources.huygens.knaw.nl/repertoriumambtsdragersambtenaren1428-1861/zoekhulp" '
     'target="_blank" rel="noopener">zoekhulp</a> en de institutionele toelichting per instelling.</p>'
 )

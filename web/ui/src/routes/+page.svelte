@@ -2,8 +2,8 @@
   <div class="hero">
     <h1>Repertorium van Ambtenaren en Ambtsdragers</h1>
     <p class="lede">
-      Zoek personen, aanstellingen, instellingen en functies in de periode 1428–1861.
-      Kies een context; de periode rechtsboven geldt overal.
+      U kunt het bestand doorzoeken via deze vier ingangen (periode 1428–1861).
+      De periode rechtsboven geldt overal.
     </p>
   </div>
 
@@ -12,14 +12,7 @@
       <a href="/personen">
         <span class="kicker">Zoeken</span>
         <strong>Personen</strong>
-        <span class="desc">Naam, leven, facetten en filters</span>
-      </a>
-    </li>
-    <li>
-      <a href="/aanstellingen">
-        <span class="kicker">Zoeken</span>
-        <strong>Aanstellingen</strong>
-        <span class="desc">Naam, facetten, geneste resultaten</span>
+        <span class="desc">Naam, leven, verfijnen en filters</span>
       </a>
     </li>
     <li>
@@ -34,6 +27,13 @@
         <span class="kicker">Bladeren</span>
         <strong>Functies</strong>
         <span class="desc">Zoeken, A–Z en detail</span>
+      </a>
+    </li>
+    <li>
+      <a href="/aanstellingen">
+        <span class="kicker">Zoeken</span>
+        <strong>Aanstellingen</strong>
+        <span class="desc">Functie/instelling, verfijnen, geneste resultaten</span>
       </a>
     </li>
   </ul>

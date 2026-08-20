@@ -2,16 +2,17 @@
   import '../app.css';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn, clearApiKey } from '$lib/auth';
 
   let { children } = $props();
 
   function logout() {
     clearApiKey();
-    goto('/login');
+    goto(appPath('/login'));
   }
 
-  const onLogin = $derived($page.url.pathname.startsWith('/login'));
+  const onLogin = $derived($page.url.pathname === appPath('/login'));
 </script>
 
 <div class="admin-shell">
@@ -19,10 +20,10 @@
     <h1>RAA — Redactie</h1>
     {#if !onLogin && isLoggedIn()}
       <nav class="admin-nav">
-        <a href="/">Dashboard</a>
-        <a href="/werklijst/personen">Werklijst</a>
-        <a href="/conflicts">Conflicten</a>
-        <a href="/zoeken">Openen op id</a>
+        <a href={appPath('/')}>Dashboard</a>
+        <a href={appPath('/werklijst/personen')}>Werklijst</a>
+        <a href={appPath('/conflicts')}>Conflicten</a>
+        <a href={appPath('/zoeken')}>Openen op id</a>
         <button type="button" onclick={logout}>Uitloggen</button>
       </nav>
     {/if}

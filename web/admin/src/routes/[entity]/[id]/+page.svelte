@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn } from '$lib/auth';
   import {
     fetchEntityContext,
@@ -34,7 +35,7 @@
 
   async function load() {
     if (!isLoggedIn()) {
-      goto('/login');
+      goto(appPath('/login'));
       return;
     }
     loading = true;
@@ -129,7 +130,7 @@
   }
 </script>
 
-<a href="/">← Dashboard</a>
+<a href={appPath('/')}>← Dashboard</a>
 
 {#if loading}
   <p class="hint">Laden…</p>

@@ -125,7 +125,7 @@ export function parseAanstellingenParams(params: URLSearchParams): Aanstellingen
   return {
     ...shared,
     groupBy: groupBy === 'functie' ? 'functie' : 'instelling',
-    sort: params.get('sort') ?? 'instelling',
+    sort: params.get('sort') ?? 'van',
   };
 }
 
@@ -151,7 +151,7 @@ export function buildAanstellingenParams(
   const params = new URLSearchParams();
   writeShared(params, state);
   if (state.groupBy !== 'instelling') params.set('group_by', state.groupBy);
-  if (state.sort && state.sort !== 'instelling') params.set('sort', state.sort);
+  if (state.sort && state.sort !== 'van') params.set('sort', state.sort);
   if (period) params.set('period', period);
   return params;
 }

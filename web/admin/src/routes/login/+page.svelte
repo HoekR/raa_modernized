@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn, setApiKey } from '$lib/auth';
 
   let key = $state('');
   let error = $state<string | null>(null);
 
   onMount(() => {
-    if (isLoggedIn()) goto('/');
+    if (isLoggedIn()) goto(appPath('/'));
   });
 
   function submit(e: Event) {
@@ -18,7 +19,7 @@
       return;
     }
     setApiKey(key);
-    goto('/');
+    goto(appPath('/'));
   }
 </script>
 

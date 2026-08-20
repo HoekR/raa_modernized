@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn } from '$lib/auth';
 
   let instellingId = $state('');
@@ -7,25 +8,25 @@
   let aanstellingId = $state('');
 
   $effect(() => {
-    if (!isLoggedIn()) goto('/login');
+    if (!isLoggedIn()) goto(appPath('/login'));
   });
 
   function openInstelling(e: Event) {
     e.preventDefault();
     const id = instellingId.trim();
-    if (id) goto(`/instellingen/${id}`);
+    if (id) goto(appPath(`/instellingen/${id}`));
   }
 
   function openPersoon(e: Event) {
     e.preventDefault();
     const id = personId.trim();
-    if (id) goto(`/persoon/${id}`);
+    if (id) goto(appPath(`/persoon/${id}`));
   }
 
   function openAanstelling(e: Event) {
     e.preventDefault();
     const id = aanstellingId.trim();
-    if (id) goto(`/aanstelling/${id}`);
+    if (id) goto(appPath(`/aanstelling/${id}`));
   }
 </script>
 

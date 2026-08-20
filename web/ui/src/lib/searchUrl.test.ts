@@ -86,6 +86,38 @@ describe('filter chip labels', () => {
 });
 
 describe('searchUrl aanstellingen roundtrip', () => {
+  it('defaults sort to van', () => {
+    const parsed = parseAanstellingenParams(new URLSearchParams());
+    expect(parsed.sort).toBe('van');
+    const params = buildAanstellingenParams(
+      { ...parsed, functieIds: [], instellingIds: [] },
+      'all'
+    );
+    expect(params.get('sort')).toBeNull();
+  });
+
+  it('encodes non-default sort', () => {
+    const state = {
+      q: '',
+      van: '',
+      tot: '',
+      functieIds: [],
+      instellingIds: [],
+      provincieIds: [],
+      regioIds: [],
+      lokalIds: [],
+      standIds: [],
+      adel: false,
+      functieMatch: 'any' as const,
+      instellingMatch: 'any' as const,
+      groupBy: 'instelling' as const,
+      sort: 'instelling',
+    };
+    const params = buildAanstellingenParams(state, 'all');
+    expect(params.get('sort')).toBe('instelling');
+    expect(parseAanstellingenParams(params).sort).toBe('instelling');
+  });
+
   it('encodes group and sort', () => {
     const state = {
       q: '',

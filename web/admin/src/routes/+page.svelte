@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn } from '$lib/auth';
   import { fetchRecentAmendments } from '$lib/editorial';
 
@@ -11,7 +12,7 @@
 
   onMount(async () => {
     if (!isLoggedIn()) {
-      goto('/login');
+      goto(appPath('/login'));
       return;
     }
     try {
@@ -24,7 +25,7 @@
   function openInstelling(e: Event) {
     e.preventDefault();
     const id = jumpId.trim();
-    if (id) goto(`/instellingen/${id}`);
+    if (id) goto(appPath(`/instellingen/${id}`));
   }
 </script>
 
@@ -39,13 +40,13 @@
     class="btn-row"
     onsubmit={(e) => {
       e.preventDefault();
-      if (personId.trim()) goto(`/persoon/${personId.trim()}`);
+      if (personId.trim()) goto(appPath(`/persoon/${personId.trim()}`));
     }}
   >
     <input type="text" bind:value={personId} placeholder="Persoon-id" />
     <button type="submit" class="primary">Persoon bewerken</button>
   </form>
-  <p><a href="/conflicts">Importconflicten →</a> · <a href="/werklijst/personen">Werklijst (grid) →</a></p>
+  <p><a href={appPath('/conflicts')}>Importconflicten →</a> · <a href={appPath('/werklijst/personen')}>Werklijst (grid) →</a></p>
 </div>
 
 {#if error}
@@ -57,11 +58,11 @@
       {#each rows as row}
         <li>
           {#if row.entity_type === 'instelling' && row.field === 'toelichting'}
-            <a href="/instellingen/{row.entity_id}">{row.entity_type} #{row.entity_id}</a>
+            <a href={appPath(`/instellingen/${row.entity_id}`)}>{row.entity_type} #{row.entity_id}</a>
           {:else if row.entity_type === 'persoon'}
-            <a href="/persoon/{row.entity_id}">{row.entity_type} #{row.entity_id}</a> — {row.field}
+            <a href={appPath(`/persoon/${row.entity_id}`)}>{row.entity_type} #{row.entity_id}</a> — {row.field}
           {:else if row.entity_type === 'aanstelling'}
-            <a href="/aanstelling/{row.entity_id}">{row.entity_type} #{row.entity_id}</a> — {row.field}
+            <a href={appPath(`/aanstelling/${row.entity_id}`)}>{row.entity_type} #{row.entity_id}</a> — {row.field}
           {:else}
             {row.entity_type} #{row.entity_id} — {row.field}
           {/if}
