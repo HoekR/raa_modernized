@@ -42,7 +42,8 @@
   const maxCount = $derived(Math.max(...bins.map((b) => timelineStackTotal(b)), 0));
   const undatedNote = $derived(undatedNoteForEntity(entity, undated, includeShadowDates));
   const shortDecadeLabels = $derived(bin === 'decade' && bins.length > 15);
-  const maxVisibleLabels = $derived(wide ? 14 : 12);
+  /** Compact search strip: fewer ticks; overview (wide): denser labels. */
+  const maxVisibleLabels = $derived(wide ? 14 : compact ? 8 : 12);
 
   function barLabel(index: number, year: number): string {
     return timelineBinLabel(year, bin, { shortDecade: shortDecadeLabels });
@@ -73,7 +74,7 @@
         {@const stackTotal = timelineStackTotal(b)}
         {@const h = timelineBarHeight(stackTotal, maxCount)}
         {@const label = barLabel(i, b.year)}
-        {@const labelVisible = !compact && showLabel(i)}
+        {@const labelVisible = showLabel(i)}
         {#if stacked && b.by_period}
           <div class="bar-col">
             <div class="bar-stack" style:height="{Math.max(h, 4)}%" title="{label}: {stackTotal}">
@@ -185,10 +186,11 @@
     gap: 2px;
     height: 4.5rem;
     overflow-x: auto;
-    padding-bottom: 0.15rem;
+    padding-bottom: 2.1rem;
   }
   .compact .bars {
     height: 3.25rem;
+    padding-bottom: 1.85rem;
   }
   .bar-col,
   .bar-btn,
@@ -251,6 +253,11 @@
     max-height: 2.5rem;
     overflow: hidden;
     line-height: 1.1;
+    flex-shrink: 0;
+  }
+  .compact .bar-lab {
+    font-size: 0.55rem;
+    max-height: 1.75rem;
   }
   .wide .bars {
     height: 5.5rem;

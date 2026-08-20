@@ -37,12 +37,12 @@ RS: Staten-Generaal appears under two names (Friezen vs rest). That is a **data 
 | A4 | Placeholder burgemeester → gedeputeerde | UI | S | **done** M1 |
 | A5 | Caveat “onderbrekingen…” clearer Dutch | UI/API copy | S | **done** M1 |
 | A6 | Uncertainty: EDTF-style (not bare `~`) | Display | S–M | M1 |
-| B1 | Personen (via instelling): default chronological | UI/API sort | S–M | M2 |
-| B2 | Sort on aanstellingen | UI/API | **done** (local `van` default) | M2 |
+| B1 | Personen (via instelling): default chronological | UI/API sort | S–M | **done** M2 (aanstellingen default `van`) |
+| B2 | Sort on aanstellingen | UI/API | **done** | M2 |
 | B3 | A–Z / listing: `achternaam, voornaam` | Display | S–M | M1 |
 | B4 | Instelling “functies”: alpha not chrono | API detail | S | **done** M1 |
 | B5 | Show adel in result rows | UI | S–M | M1 |
-| B6 | Histogram startjaar: year labels on axis | UI chart | S–M | M2 |
+| B6 | Histogram startjaar: year labels on axis | UI chart | S–M | **done** M2 |
 | C1 | Hide **any** facet with count 0 in current period | API/UI facets | M | M3 |
 | C2 | Verfijnen from instelling must not free-switch instelling | UX | M | *parked* |
 | C3 | Provincie in vertegenwoordiging filters | Facets/filters | M | M3 |
@@ -88,16 +88,15 @@ RS: Staten-Generaal appears under two names (Friezen vs rest). That is a **data 
 
 | Include | Notes |
 |---------|--------|
-| B1 | Default chronological where RS meant “personen bij instelling” |
-| B2 | Commit/push existing `van` default if not on SURF |
-| B6 | Year (or decade) labels under startjaar histogram |
+| B1 | Covered by aanstellingen default sort `van` (nested instelling → persoon rows chronological) |
+| B2 | Default `van` in UI + API fallback |
+| B6 | Compact histogram showed no labels (`!compact`); now shows thinned year ticks |
 
 **Checks (M2 close gate)**
 
-- [ ] Aanstellingen default sort = `van` (undated last); SURF build updated if demo still live
-- [ ] Histogram axis shows years; bar ↔ year readable without hover-only
-- [ ] Smoke: empty search / period Republiek → first page ordered by appointment start
-
+- [x] Aanstellingen default sort = `van` (undated last); SURF build updated if demo still live
+- [x] Histogram axis shows years; bar ↔ year readable without hover-only
+- [ ] Smoke: empty search / period Republiek → first page ordered by appointment start (manual)
 ### M3 — Facets & vertegenwoordiging (“namens”)
 
 **Goal:** Period-true filters; multi-level namens.  
@@ -180,3 +179,4 @@ Answer later; do not block M1/M2/M4:
 |------|--------|
 | 2026-08-20 | Initial plan from RS comments; E2 revised S–M (merge + FK rewrite) |
 | 2026-08-20 | Shipped pure-S items: A1–A5, B4 |
+| 2026-08-20 | M2: B6 compact year labels; B1/B2 via `van` default |

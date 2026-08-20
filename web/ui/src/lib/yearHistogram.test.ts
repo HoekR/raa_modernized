@@ -62,6 +62,11 @@ describe('shouldShowTimelineLabel', () => {
     expect(visible).toBeLessThanOrEqual(15);
     expect(visible).toBeGreaterThanOrEqual(10);
   });
+
+  it('always shows endpoints when thinning (compact chart)', () => {
+    expect(shouldShowTimelineLabel(0, 40, 8)).toBe(true);
+    expect(shouldShowTimelineLabel(39, 40, 8)).toBe(true);
+  });
 });
 
 describe('timelineFilterYears', () => {
