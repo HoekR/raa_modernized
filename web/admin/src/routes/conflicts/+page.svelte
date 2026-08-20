@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn } from '$lib/auth';
   import { fetchConflicts, resolveConflict, type ConflictRow } from '$lib/editorial';
 
@@ -10,7 +11,7 @@
 
   async function load() {
     if (!isLoggedIn()) {
-      goto('/login');
+      goto(appPath('/login'));
       return;
     }
     loading = true;
@@ -31,7 +32,7 @@
   }
 </script>
 
-<a href="/">← Dashboard</a>
+<a href={appPath('/')}>← Dashboard</a>
 
 <div class="panel">
   <h2>Importconflicten</h2>
@@ -72,7 +73,7 @@
         <button type="button" onclick={() => resolve(row.id, 'accept_base')}>
           Nieuwe import accepteren
         </button>
-        <a class="btn" href="/{row.entity_type}/{row.entity_id}">Naar editor</a>
+        <a class="btn" href={appPath(`/${row.entity_type}/${row.entity_id}`)}>Naar editor</a>
       </div>
     </div>
   {/each}

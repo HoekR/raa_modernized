@@ -81,7 +81,7 @@
         onselect={(v) => onselect('stand', v)}
       />
     {/if}
-    <p class="footnote">Grafieken tonen maximaal 8 waarden; alle facetten staan in Verfijnen.</p>
+    <p class="footnote">Grafieken tonen maximaal 8 waarden; alle filters staan in Verfijnen.</p>
   {/if}
 </div>
 

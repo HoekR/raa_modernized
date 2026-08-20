@@ -1032,7 +1032,7 @@ def search_aanstellingen(db: Session, req: SearchRequest) -> SearchResponse:
         ).scalar()
         or 0
     )
-    order_sql = AANSTELLINGEN_SORT_SQL.get(req.sort, AANSTELLINGEN_SORT_SQL["instelling"])
+    order_sql = AANSTELLINGEN_SORT_SQL.get(req.sort, AANSTELLINGEN_SORT_SQL["van"])
     rows = db.execute(
         text(
             f"""
@@ -1299,7 +1299,7 @@ def _instelling_functie_spans(db: Session, instelling_id: int) -> list[dict]:
                 FROM raa.functie_instelling_span s
                 JOIN raa.functie f ON f.id = s.functie_id
                 WHERE s.instelling_id = :id
-                ORDER BY s.first_year NULLS LAST, f.naam
+                ORDER BY f.naam, s.first_year NULLS LAST
                 """
             ),
             {"id": instelling_id},

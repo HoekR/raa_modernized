@@ -53,7 +53,7 @@
   let van = $state('');
   let tot = $state('');
   let groupBy = $state<'instelling' | 'functie'>('instelling');
-  let sort = $state('instelling');
+  let sort = $state('van');
   let functies = $state<SuggestItem[]>([]);
   let instellingen = $state<SuggestItem[]>([]);
   let provincies = $state<SuggestItem[]>([]);
@@ -563,9 +563,9 @@
             runSearch();
           }}
         >
+          <option value="van">Aanstellingsdatum (van)</option>
           <option value="instelling">Instelling</option>
           <option value="functie">Functie</option>
-          <option value="van">Aanstellingsdatum (van)</option>
           <option value="geslachtsnaam">Geslachtsnaam</option>
           <option value="voornaam">Voornaam</option>
         </select>

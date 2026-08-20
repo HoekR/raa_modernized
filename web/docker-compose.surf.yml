@@ -46,8 +46,8 @@ services:
       - "80:80"
     volumes:
       - ./nginx/surf.conf:/etc/nginx/conf.d/default.conf:ro
-      - ../web/ui/build:/usr/share/nginx/html/ui:ro
-      - ../web/admin/build:/usr/share/nginx/html/redactie:ro
+      - ./ui/build:/usr/share/nginx/html/ui:ro
+      - ./admin/build:/usr/share/nginx/html/redactie:ro
     restart: unless-stopped
 
   import:

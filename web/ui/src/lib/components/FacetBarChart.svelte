@@ -51,7 +51,7 @@
       {/each}
     </ul>
     {#if rest > 0}
-      <p class="more">+{rest} meer onder Facetten</p>
+      <p class="more">+{rest} meer onder Verfijnen</p>
     {/if}
   {/if}
 </section>

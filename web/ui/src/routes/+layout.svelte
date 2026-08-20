@@ -12,9 +12,9 @@
 
   const nav = [
     { href: '/personen', label: 'Personen' },
-    { href: '/aanstellingen', label: 'Aanstellingen' },
     { href: '/instellingen', label: 'Instellingen' },
     { href: '/functies', label: 'Functies' },
+    { href: '/aanstellingen', label: 'Aanstellingen' },
   ];
 
   async function refreshPeriods(context: string) {

@@ -81,7 +81,7 @@
     <div class="search-toolbar-left">
       <label class="q">
         Naam (wildcards * ?)
-        <input bind:value={q} placeholder="bijv. burgemeester*" />
+        <input bind:value={q} placeholder="bijv. gedeputeerde*" />
       </label>
       <button type="submit" disabled={loading}>{loading ? 'Zoeken…' : 'Zoeken'}</button>
       <AzBrowser

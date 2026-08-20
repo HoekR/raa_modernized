@@ -35,6 +35,55 @@ Share with team:
 
 Open SURF firewall **port 80** (and 443 if you add TLS later).
 
+## Stop / start
+
+From the clone root (e.g. `/data/raa_modernized`):
+
+**Stop**
+
+```bash
+./scripts/surf_stack.sh down
+```
+
+Postgres data stays in the Docker volume. The demo is off; port 80 is free.
+
+**Start again**
+
+```bash
+export SURF_PUBLIC_HOST=145.38.193.71   # hostname or IP
+./scripts/surf_stack.sh up
+```
+
+You do **not** need to rebuild the UI or restore the dump unless those changed.
+
+**Check**
+
+```bash
+./scripts/surf_stack.sh status
+```
+
+Containers use `restart: unless-stopped` (api/nginx). They keep running after SSH disconnect. `down` is what stops them.
+
+Optional: start inside tmux if you also run host processes (`up-dev`):
+
+```bash
+tmux new -s raa
+./scripts/surf_stack.sh up
+# Ctrl+B D to detach
+```
+
+**Wipe the database** (full reset — not needed for a normal stop):
+
+```bash
+./scripts/surf_stack.sh down
+docker volume ls | grep raa_pg    # often web_raa_pg
+docker volume rm web_raa_pg       # use the name from the previous line
+./scripts/restore_demo_db.sh raa_demo.dump
+./scripts/surf_stack.sh up
+```
+
+## Path C — no extab on SURF (Postgres dump)
+
 ## Path C — no extab on SURF (Postgres dump)
 
 **On your laptop** (after local import):
@@ -100,16 +149,6 @@ Open firewall ports **5173**, **5174**, **8000**.
 
 Ubuntu 22.04+, Docker + compose plugin. Node 20+ on host for `build-ui` (or build on laptop and copy `web/*/build` directories).
 
-## Keep running after SSH
-
-```bash
-tmux new -s raa
-./scripts/surf_stack.sh up
-# Ctrl+B D
-```
-
-Or use `restart: unless-stopped` in compose (already set for api/nginx).
-
 ## Security (internal pilot)
 
 - Restrict SURF security group to institute IPs / VPN.
@@ -124,6 +163,7 @@ Or use `restart: unless-stopped` in compose (already set for api/nginx).
 | CORS on login | `cors_origins` must match browser URL exactly |
 | 502 on /api | `docker compose -f web/docker-compose.surf.yml logs api` |
 | Admin 404 assets | Rebuild admin with `ADMIN_BASE_PATH=/redactie npm run build` |
+| `/redactie` 404 | Use `http://HOST/redactie/` (slash). If that 404s too: `ls web/admin/build/index.html` — rebuild admin, then `./scripts/surf_stack.sh up` |
 | extab not found | `DATA_ENV=researchcloud`, check `data_manifest.local.toml`, `uv run python -m data_io.check` |
 | Import OOM | 8 GB VM or use Path C dump |
 | `docker compose` broken | Use `docker-compose` package or build API: `docker build -f web/Dockerfile -t raa-api .` |

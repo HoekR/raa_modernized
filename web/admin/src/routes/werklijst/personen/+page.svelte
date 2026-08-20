@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { appPath } from '$lib/appPath';
   import { isLoggedIn } from '$lib/auth';
   import {
     downloadPersoonTemplate,
@@ -31,7 +32,7 @@
   let saveErrors = $state<Array<{ row: number; field: string; error: string }>>([]);
 
   $effect(() => {
-    if (!isLoggedIn()) goto('/login');
+    if (!isLoggedIn()) goto(appPath('/login'));
   });
 
   function draftKey(rowId: number, field: string) {
@@ -222,7 +223,7 @@
   }
 </script>
 
-<a href="/">← Dashboard</a>
+<a href={appPath('/')}>← Dashboard</a>
 
 <div class="panel">
   <h2>Werklijst — personen</h2>
