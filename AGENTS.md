@@ -12,6 +12,7 @@ Read **`PLAN.md`**, **`docs/MIGRATION_LOG.md`**, and **`docs/DATA.md`** before p
 | `scripts/import_release.py` | Prepare extab → load `raa_staging` → merge into `raa.*` |
 | `scripts/merge_release.py` | Standalone staging merge (editorial conflicts) |
 | `scripts/dev.sh` | Local stack: Postgres + import-if-empty + API `:8000` |
+| `scripts/start_app.sh` | One-command local start (API + UIs); see `docs/START.md` |
 | `raa_life_dates/` | EDTF, shadow life years, plausibility validation |
 | `raa_search_display/` | `search_display`, listing names |
 | `raa_entity_spans/` | Institution/function span tables |
@@ -47,9 +48,14 @@ Primary corpus input: **`raa_extab`** (logical name for `extab.pkl`).
 
 ## Import and database
 
+Local start (API + UIs): **[docs/START.md](docs/START.md)**.
+
 ```bash
-./scripts/dev.sh              # Postgres + import if empty + API
-./scripts/dev.sh --import     # re-import (stop running dev.sh first)
+./scripts/start_app.sh            # Postgres + API + UI + redactie (background)
+./scripts/stop_app.sh             # stop API + UIs
+./scripts/restart_app.sh          # bounce API + UIs
+./scripts/dev.sh                  # foreground API only (Postgres + import-if-empty)
+./scripts/dev.sh --import         # re-import (stop running API first)
 uv run python scripts/import_release.py
 ```
 

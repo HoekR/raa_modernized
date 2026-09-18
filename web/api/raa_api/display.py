@@ -51,12 +51,40 @@ def format_life_event(
     return " ".join(parts)
 
 
+def _display_date_and_approx(
+    edtf: Any,
+    als_bekend: Any,
+    onbepaald: Any,
+) -> tuple[str, bool]:
+    """Prefer human label; strip EDTF ``~/?/%`` and treat as approximate (show ``ca.``)."""
+    edtf_text = _s(edtf)
+    known = _s(als_bekend)
+    approx = _is_truthy(onbepaald)
+    if edtf_text and edtf_text[-1] in "~?%":
+        approx = True
+        edtf_text = edtf_text[:-1]
+    # Prefer als_bekend for display when present (legacy human string); else cleaned EDTF.
+    text = known or edtf_text
+    if text.endswith(("~", "?", "%")):
+        approx = True
+        text = text[:-1]
+    return text, approx
+
+
 def format_persoon_life_summary(person: dict) -> dict[str, str]:
     from raa_life_dates.validate import is_plausible_life_year, raw_recorded_geboorte_year, raw_recorded_overlijden_year
 
     geboorte_label = "gedoopt" if _is_truthy(person.get("doopjaar")) else "geboren"
-    geb_text = _s(person.get("geboorte_edtf")) or _s(person.get("geboortedatum_als_bekend"))
-    ovl_text = _s(person.get("overlijden_edtf")) or _s(person.get("overlijdensdatum_als_bekend"))
+    geb_text, geb_approx = _display_date_and_approx(
+        person.get("geboorte_edtf"),
+        person.get("geboortedatum_als_bekend"),
+        person.get("onbepaaldgeboortedatum"),
+    )
+    ovl_text, ovl_approx = _display_date_and_approx(
+        person.get("overlijden_edtf"),
+        person.get("overlijdensdatum_als_bekend"),
+        person.get("onbepaaldoverlijdensdatum"),
+    )
     geb_row = pd.Series(person)
     geb_year = raw_recorded_geboorte_year(geb_row)
     ovl_year = raw_recorded_overlijden_year(geb_row)
@@ -64,8 +92,6 @@ def format_persoon_life_summary(person: dict) -> dict[str, str]:
         geb_text = ""
     if ovl_text and ovl_year is not None and not is_plausible_life_year(ovl_year):
         ovl_text = ""
-    geb_approx = _is_truthy(person.get("onbepaaldgeboortedatum")) and not _s(person.get("geboorte_edtf"))
-    ovl_approx = _is_truthy(person.get("onbepaaldoverlijdensdatum")) and not _s(person.get("overlijden_edtf"))
     return {
         "geboorte": format_life_event(
             label_born=geboorte_label,

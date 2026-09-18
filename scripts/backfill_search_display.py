@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backfill persoon.search_display on an existing PostgreSQL import."""
+"""Backfill persoon.search_display and listing_naam on an existing PostgreSQL import."""
 
 from __future__ import annotations
 
@@ -27,10 +27,11 @@ def main() -> None:
         academische_titel = pd.read_sql(text("SELECT * FROM raa.academische_titel"), conn)
 
     enriched = enrich_persoon_search_display(persoon, alias, adellijke_titel, academische_titel)
-    updates = enriched[["id", "search_display"]]
+    updates = enriched[["id", "search_display", "listing_naam"]]
 
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE raa.persoon ADD COLUMN IF NOT EXISTS search_display TEXT"))
+        conn.execute(text("ALTER TABLE raa.persoon ADD COLUMN IF NOT EXISTS listing_naam TEXT"))
         conn.execute(
             text("CREATE INDEX IF NOT EXISTS idx_persoon_search_display ON raa.persoon (search_display)")
         )
@@ -42,10 +43,12 @@ def main() -> None:
                 text(
                     """
                     UPDATE raa.persoon AS p
-                    SET search_display = v.search_display
+                    SET search_display = v.search_display,
+                        listing_naam = v.listing_naam
                     FROM (
                         SELECT unnest(CAST(:ids AS int[])) AS id,
-                               unnest(CAST(:displays AS text[])) AS search_display
+                               unnest(CAST(:displays AS text[])) AS search_display,
+                               unnest(CAST(:listings AS text[])) AS listing_naam
                     ) AS v
                     WHERE p.id = v.id
                     """
@@ -53,13 +56,14 @@ def main() -> None:
                 {
                     "ids": [int(row["id"]) for row in chunk],
                     "displays": [row["search_display"] for row in chunk],
+                    "listings": [row["listing_naam"] for row in chunk],
                 },
             )
 
-    sample = updates.loc[updates["id"] == 21009, "search_display"]
-    print(f"Backfilled search_display for {len(updates)} persons")
+    sample = updates.loc[updates["id"] == 21502, "listing_naam"]
+    print(f"Backfilled search_display + listing_naam for {len(updates)} persons")
     if not sample.empty:
-        print(f"21009: {sample.iloc[0][:120]}...")
+        print(f"21502 listing_naam: {sample.iloc[0]}")
 
 
 if __name__ == "__main__":

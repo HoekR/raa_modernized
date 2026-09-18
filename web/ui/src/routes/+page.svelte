@@ -4,6 +4,7 @@
     <p class="lede">
       U kunt het bestand doorzoeken via deze vier ingangen (periode 1428–1861).
       De periode rechtsboven geldt overal.
+      Lees eerst de <a href="/inleiding">inleiding</a> voor periodes en zoektips.
     </p>
   </div>
 

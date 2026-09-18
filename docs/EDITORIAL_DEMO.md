@@ -43,22 +43,17 @@ Three ways to edit: **single record**, **browser spreadsheet**, **Excel template
 
 ## Start stack
 
-**Terminal A — API + database**
+See **[START.md](START.md)**. Short version:
 
 ```bash
-./scripts/dev.sh
+./scripts/start_app.sh     # API + public UI + redactie (background)
+./scripts/stop_app.sh
+./scripts/restart_app.sh
 ```
 
-Use `./scripts/dev.sh --import` only when you need a fresh extab load. **Stop dev.sh first** (Ctrl+C) before re-import. See [LIFE_DATES.md](LIFE_DATES.md) (re-import) and [EDITORIAL.md](EDITORIAL.md) (merge / conflicts).
+**Login:** http://localhost:5174/login — paste `[editorial].api_key` from `config.local.toml`.
 
-**Terminal B — frontends** (two tabs or sequential)
-
-```bash
-cd web/ui && npm run dev      # http://localhost:5173
-cd web/admin && npm run dev   # http://localhost:5174
-```
-
-**Login:** http://localhost:5174/login — paste the same string as `[editorial].api_key` in `config.local.toml`.
+Use `./scripts/start_app.sh --import` (or `./scripts/dev.sh --import`) for a fresh extab load — stop a running API first if it was started in the foreground. See [LIFE_DATES.md](LIFE_DATES.md) and [EDITORIAL.md](EDITORIAL.md).
 
 **Screen-share tip:** admin on one half, public site on the other (hard-refresh public after saves).
 

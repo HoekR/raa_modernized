@@ -53,5 +53,7 @@ def test_enrich_persoon_search_display_adds_column():
     )
     enriched = enrich_persoon_search_display(persoon)
     assert "search_display" in enriched.columns
+    assert "listing_naam" in enriched.columns
     assert "baron" in enriched.loc[0, "search_display"]
     assert "Tjaerd van Aylva" in enriched.loc[0, "search_display"]
+    assert enriched.loc[0, "listing_naam"] == "Aylva, Tjaerd van"

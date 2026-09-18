@@ -363,6 +363,10 @@ PERSONEN_SORT_COLUMNS = {
     "voornaam": "p.voornaam",
     "geboortedatum": "p.geboortedatum",
     "overlijdensdatum": "p.overlijdensdatum",
+    # Earliest matching appointment start (personen-bij-instelling chronological).
+    "van": (
+        "(SELECT MIN(a.van) FROM raa.aanstelling a WHERE a.persoon_id = p.id)"
+    ),
 }
 
 AANSTELLINGEN_SORT_SQL = {
@@ -435,6 +439,7 @@ def search_personen(db: Session, req: SearchRequest) -> SearchResponse:
                    p.geboorte_edtf, p.overlijden_edtf,
                    p.life_start_year, p.life_end_year,
                    p.life_start_source, p.life_end_source,
+                   p.adel,
                    adt.naam AS adellijke_titel, act.naam AS academische_titel
             FROM raa.persoon p
             LEFT JOIN raa.adellijke_titel adt ON adt.id = p.adellijketitel_id
@@ -451,6 +456,7 @@ def search_personen(db: Session, req: SearchRequest) -> SearchResponse:
     for row in rows:
         item = dict(row)
         item["display_naam"] = format_persoon_listing_name(item)
+        item["listing_naam"] = item["display_naam"]
         hits.append(item)
     facets = _personen_facets(db, where_sql, params, req)
     timeline, timeline_meta = _personen_timeline(db, where_sql, params, req)
@@ -1241,6 +1247,16 @@ def get_instelling_detail(db: Session, instelling_id: int) -> dict | None:
         entity_id=instelling_id,
         naam=detail["naam"],
         stats=stats,
+        actions=[
+            {
+                "label": "Personen bij deze instelling",
+                "href": f"/personen?instelling_id={instelling_id}&sort=van",
+            },
+            {
+                "label": "Aanstellingen bij deze instelling",
+                "href": f"/aanstellingen?instelling_id={instelling_id}",
+            },
+        ],
         related=[
             {
                 "title": "Functies in deze instelling",
@@ -1614,6 +1630,7 @@ def _browse_personen_az(
                    p.geboorte_edtf, p.overlijden_edtf,
                    p.life_start_year, p.life_end_year,
                    p.life_start_source, p.life_end_source,
+                   p.adel,
                    adt.naam AS adellijke_titel, act.naam AS academische_titel
             FROM raa.persoon p
             LEFT JOIN raa.adellijke_titel adt ON adt.id = p.adellijketitel_id
@@ -1629,6 +1646,7 @@ def _browse_personen_az(
     for row in rows:
         item = dict(row)
         item["display_naam"] = format_persoon_listing_name(item)
+        item["listing_naam"] = item["display_naam"]
         hits.append(item)
 
     letter_rows = db.execute(

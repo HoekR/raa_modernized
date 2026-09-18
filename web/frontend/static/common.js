@@ -112,7 +112,10 @@ function formatLifeDateCell(row, kind) {
 
   let html = escapeHtml(text);
   if (edtf && /[~?%]$/.test(String(edtf))) {
-    html += ' <span class="provenance approx" title="Onzekere datum">~</span>';
+    // Prefer Dutch "ca." over a bare tilde badge (RS A6).
+    if (!/^ca\./i.test(text)) {
+      html = escapeHtml(`ca. ${text}`);
+    }
   }
   if (lifeSource === "shadow" && !display) {
     html += ' <span class="provenance geschat" title="Geschat uit aanstellingen">geschat</span>';
@@ -132,7 +135,7 @@ function lifeDateBadges(row, kind) {
   const display = isBirth ? row.geboortedatum_als_bekend : row.overlijdensdatum_als_bekend;
   let badges = "";
   if (edtf && /[~?%]$/.test(String(edtf))) {
-    badges += ' <span class="provenance approx" title="Onzekere datum">~</span>';
+    badges += ' <span class="provenance approx" title="Onzekere datum">ca.</span>';
   }
   if (lifeSource === "shadow" && !(display && String(display).trim())) {
     badges += ' <span class="provenance geschat" title="Geschat uit aanstellingen">geschat</span>';

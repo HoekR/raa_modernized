@@ -15,6 +15,7 @@
     { href: '/instellingen', label: 'Instellingen' },
     { href: '/functies', label: 'Functies' },
     { href: '/aanstellingen', label: 'Aanstellingen' },
+    { href: '/inleiding', label: 'Inleiding' },
   ];
 
   async function refreshPeriods(context: string) {

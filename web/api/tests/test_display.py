@@ -25,6 +25,30 @@ def test_format_persoon_listing_name_without_geslachtsnaam():
     assert format_persoon_listing_name(person) == "Jan"
 
 
+def test_format_persoon_listing_name_surname_first_with_titles():
+    person = {
+        "voornaam": "Cornelis",
+        "tussenvoegsel": "van",
+        "geslachtsnaam": "Aylva",
+        "adellijke_titel": "baron",
+        "academische_titel": None,
+    }
+    assert format_persoon_listing_name(person) == "Aylva, Cornelis baron van"
+
+
+def test_format_persoon_listing_name_truncates_long_voornaam():
+    person = {
+        "voornaam": "Clément Wenceslas François Charles Cunégonde Constant Jean-Népomucène",
+        "tussenvoegsel": "van",
+        "geslachtsnaam": "Renesse-Breidbach",
+        "adellijke_titel": "graaf",
+    }
+    label = format_persoon_listing_name(person, max_len=72)
+    assert label.startswith("Renesse-Breidbach,")
+    assert "…" in label
+    assert len(label) <= 72
+
+
 def test_format_persoon_life_summary_doopjaar():
     person = {
         "doopjaar": "1",
@@ -38,6 +62,20 @@ def test_format_persoon_life_summary_doopjaar():
     summary = format_persoon_life_summary(person)
     assert summary["geboorte"] == "gedoopt: 1701 te Leeuwarden"
     assert summary["overlijden"] == "overleden: ca. 1760 te Grouw"
+
+
+def test_format_persoon_life_summary_edtf_tilde_uses_ca():
+    person = {
+        "geboortedatum_als_bekend": "1775",
+        "geboorte_edtf": "1775~",
+        "onbepaaldgeboortedatum": "1",
+        "overlijdensdatum_als_bekend": "",
+        "overlijden_edtf": None,
+        "onbepaaldoverlijdensdatum": "0",
+    }
+    summary = format_persoon_life_summary(person)
+    assert summary["geboorte"] == "geboren: ca. 1775"
+    assert "~" not in summary["geboorte"]
 
 
 def test_format_heerlijkheid():

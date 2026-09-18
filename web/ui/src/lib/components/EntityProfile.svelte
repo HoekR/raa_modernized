@@ -8,6 +8,29 @@
   };
 
   let { profile }: { profile: EntityProfile } = $props();
+
+  function onProseClick(event: MouseEvent) {
+    const target = event.target as HTMLElement | null;
+    const anchor = target?.closest?.('a') as HTMLAnchorElement | null;
+    if (!anchor) return;
+    const href = anchor.getAttribute('href') || '';
+    // In-page footnote / named anchors: keep scroll inside this detail, do not navigate away.
+    if (href.startsWith('#')) {
+      event.preventDefault();
+      const id = decodeURIComponent(href.slice(1));
+      if (!id) return;
+      const root = anchor.closest('.detail') ?? document;
+      const dest =
+        (root as ParentNode).querySelector?.(`#${CSS.escape(id)}`) ||
+        (root as ParentNode).querySelector?.(`[name="${CSS.escape(id)}"]`) ||
+        (root as ParentNode).querySelector?.(`a[name="${CSS.escape(id)}"]`);
+      if (dest instanceof HTMLElement) {
+        const collapsible = dest.closest('details');
+        if (collapsible instanceof HTMLDetailsElement) collapsible.open = true;
+        dest.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }
 </script>
 
 <article class="detail">
@@ -41,20 +64,23 @@
     </nav>
   {/if}
 
-  {#each profile.sections || [] as section}
-    {#if section.html || section.text}
-      <details class="detail-collapsible">
-        <summary>{section.title}</summary>
-        <div class="detail-collapsible-body detail-prose">
-          {#if section.html}
-            {@html modernizeHtml(section.html)}
-          {:else}
-            <p>{section.text}</p>
-          {/if}
-        </div>
-      </details>
-    {/if}
-  {/each}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div onclick={onProseClick}>
+    {#each profile.sections || [] as section}
+      {#if section.html || section.text}
+        <details class="detail-collapsible">
+          <summary>{section.title}</summary>
+          <div class="detail-collapsible-body detail-prose">
+            {#if section.html}
+              {@html modernizeHtml(section.html)}
+            {:else}
+              <p>{section.text}</p>
+            {/if}
+          </div>
+        </details>
+      {/if}
+    {/each}
+  </div>
 
   {#each profile.related || [] as group}
     {#if group.items?.length}

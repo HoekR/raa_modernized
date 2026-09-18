@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from raa_search_display.names import format_persoon_naam, normalize_search_text
+from raa_search_display.names import (
+    format_persoon_listing_name,
+    format_persoon_naam,
+    normalize_search_text,
+)
 
 
 def build_search_display(person: dict, *, aliases: list[str] | None = None) -> str:
@@ -39,13 +43,14 @@ def enrich_persoon_search_display(
     adellijke_titel: pd.DataFrame | None = None,
     academische_titel: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Add `search_display`: import-time shadow of legacy personen identity search."""
+    """Add `search_display` and `listing_naam` (surname-first cache for UI lists)."""
     result = persoon.copy()
     adt = _title_lookup(adellijke_titel)
     act = _title_lookup(academische_titel)
     alias_by_person = _alias_lookup(alias)
 
     displays: list[str] = []
+    listings: list[str] = []
     for person in result.to_dict("records"):
         adt_id = person.get("adellijketitel_id")
         act_id = person.get("academischetitel_id")
@@ -55,6 +60,8 @@ def enrich_persoon_search_display(
             person["academische_titel"] = act.get(int(act_id))
         aliases = alias_by_person.get(int(person["id"]), [])
         displays.append(build_search_display(person, aliases=aliases))
+        listings.append(format_persoon_listing_name(person))
 
     result["search_display"] = displays
+    result["listing_naam"] = listings
     return result

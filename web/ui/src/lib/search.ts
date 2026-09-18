@@ -64,11 +64,12 @@ export async function loadStands(): Promise<{ id: number; naam: string }[]> {
 }
 
 export function listingName(row: Record<string, unknown>): string {
+  if (row.listing_naam) return String(row.listing_naam);
   if (row.display_naam) return String(row.display_naam);
   const gs = String(row.geslachtsnaam ?? '').trim();
   const vn = String(row.voornaam ?? '').trim();
   const tv = String(row.tussenvoegsel ?? '').trim();
-  if (gs) return [vn, tv, gs].filter(Boolean).join(' ');
+  if (gs) return [gs + ',', vn, tv].filter(Boolean).join(' ').replace(/,\s*$/, '');
   return vn || [vn, tv, gs].filter(Boolean).join(' ');
 }
 
@@ -92,12 +93,18 @@ function isPlausibleLifeYear(year: number | null): boolean {
 export function lifeCell(
   row: Record<string, unknown>,
   kind: 'geboorte' | 'overlijden'
-): { text: string; estimated: boolean } {
+): { text: string; estimated: boolean; uncertain: boolean } {
   const display = kind === 'geboorte' ? row.geboortedatum_als_bekend : row.overlijdensdatum_als_bekend;
+  const edtf = kind === 'geboorte' ? row.geboorte_edtf : row.overlijden_edtf;
   const lifeYear = kind === 'geboorte' ? row.life_start_year : row.life_end_year;
   const lifeSource = kind === 'geboorte' ? row.life_start_source : row.life_end_source;
   const lifeEdtf = kind === 'geboorte' ? row.life_start_edtf : row.life_end_edtf;
   let text = display != null ? String(display).trim() : '';
+  const edtfStr = edtf != null ? String(edtf).trim() : '';
+  let uncertain = /[~?%]$/.test(edtfStr) || /[~?%]$/.test(text);
+  if (text.endsWith('~') || text.endsWith('?') || text.endsWith('%')) {
+    text = text.slice(0, -1);
+  }
   const leadingYear = text ? parseLeadingYear(text) : null;
   if (text && leadingYear != null && !isPlausibleLifeYear(leadingYear)) {
     text = '';
@@ -105,13 +112,16 @@ export function lifeCell(
   if (!text) {
     if (lifeSource === 'shadow' && lifeYear != null && lifeYear !== '') {
       if (kind === 'overlijden' && typeof lifeEdtf === 'string' && lifeEdtf.startsWith('>')) {
-        return { text: lifeEdtf, estimated: true };
+        return { text: lifeEdtf, estimated: true, uncertain: false };
       }
-      return { text: String(lifeYear), estimated: true };
+      return { text: String(lifeYear), estimated: true, uncertain: false };
     }
-    return { text: '—', estimated: false };
+    return { text: '—', estimated: false, uncertain: false };
   }
-  return { text, estimated: false };
+  if (uncertain && !text.toLowerCase().startsWith('ca.')) {
+    text = `ca. ${text}`;
+  }
+  return { text, estimated: false, uncertain };
 }
 
 export type NestedGroup = {

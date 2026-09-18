@@ -62,7 +62,10 @@ export function modernizeHtml(html: string): string {
       return `/functies/${parseInt(id, 10)}`;
     })
     .replace(/\/static\/index\.html\?person=(\d+)/g, '/personen/$1')
-    .replace(/\/static\/aanstellingen\.html\?/g, '/aanstellingen?');
+    .replace(/\/static\/aanstellingen\.html\?/g, '/aanstellingen?')
+    // Footnote backrefs that pointed at a full document URL → keep hash only.
+    .replace(/href="[^"]*?(#[^"]+)"/gi, 'href="$1"')
+    .replace(/href='[^']*?(#[^']+)'/gi, "href='$1'");
 }
 
 export function modernizeHref(href: string | undefined): string {
@@ -70,8 +73,12 @@ export function modernizeHref(href: string | undefined): string {
   return modernizeHtml(href);
 }
 
+/** Stacked namens: provincie → regio → lokaal (+ stand). */
 export function formatNamens(a: AanstellingDetail): string {
-  return [a.provincie, a.regio, a.lokaal, a.stand].filter(Boolean).join(' / ');
+  const levels = [a.provincie, a.regio, a.lokaal].filter(Boolean);
+  const core = levels.join(' › ');
+  if (a.stand) return core ? `${core} (${a.stand})` : String(a.stand);
+  return core;
 }
 
 const persoonCache = new Map<number, PersoonDetail>();

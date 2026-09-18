@@ -28,6 +28,7 @@ cursor raa-modernized.code-workspace
 | `PLAN.md` | Target architecture, phases, open work |
 | `docs/MIGRATION_LOG.md` | **Decision register + implementation log** (how/why we migrated) |
 | `LEGACY-UX.md` | Legacy Huygens search UX reference (zoekhulp mapping) |
+| `docs/START.md` | **How to start the local app** (API + UIs) |
 | `docs/DATA.md` | Tiers, phases, manifest workflow |
 | `data_manifest.toml` | Tier roots and registered datasets |
 | `notebooks/` | Jupyter workspace (explore phase) |
@@ -36,24 +37,21 @@ cursor raa-modernized.code-workspace
 | `web/` | FastAPI search API + static frontend + SvelteKit UI (`web/ui/`) |
 | `scripts/import_release.py` | Load `extab.pkl` into Postgres |
 | `scripts/validation_rq_smoke.py` | Pilot baseline counts + X1–X5 for [VALIDATION_RQS.md](docs/VALIDATION_RQS.md) (`--assert`) |
-| `scripts/dev.sh` | **Local stack:** Postgres + import-if-empty + API (D-53) |
+| `scripts/dev.sh` | **Local API:** Postgres + import-if-empty + API (D-53) |
+| `scripts/start_app.sh` / `stop_app.sh` / `restart_app.sh` | Full local stack (API + UIs) — see [docs/START.md](docs/START.md) |
 | `Makefile` | `make check` / `make check-db` / `make smoke` |
 
 ## Web app (local)
 
-**Preferred** (self-contained — D-53):
+Full start guide: **[docs/START.md](docs/START.md)**.
 
 ```bash
-cd ~/develop/raa_modernized
-cp config.local.toml.example config.local.toml   # once
-cp data_manifest.local.toml.example data_manifest.local.toml  # edit tier root → extab.pkl
-./scripts/dev.sh          # Postgres + import if empty + API on :8000
-./scripts/dev.sh --prod   # same, but Gunicorn + Uvicorn workers (stable runtime)
-./scripts/dev.sh --import # refresh DB from extab
-./scripts/dev.sh stop     # compose down
+./scripts/start_app.sh     # Postgres + API :8000 + UI :5173 + redactie :5174
+./scripts/stop_app.sh      # stop API + UIs (Postgres stays up)
+./scripts/restart_app.sh   # bounce API + UIs
 ```
 
-Open http://127.0.0.1:8000 — personen, aanstellingen, instellingen, functies.
+One-time: copy `config.local.toml.example` / `data_manifest.local.toml.example`, then `uv sync` and `npm install` in `web/ui` and `web/admin`.
 
 **Checks**
 

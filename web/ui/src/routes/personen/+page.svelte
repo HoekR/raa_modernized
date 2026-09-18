@@ -607,6 +607,11 @@
               <td class="name-cell">
                 <div class="name-cell-inner">
                   <a href="/personen/{row.id}">{listingName(row)}</a>
+                  {#if row.adel == 1 || row.adel === true || row.adel === '1'}
+                    <span class="adel-badge" title="Adel">adel</span>
+                  {:else if row.adellijke_titel}
+                    <span class="adel-badge" title={String(row.adellijke_titel)}>{row.adellijke_titel}</span>
+                  {/if}
                   <PersoonPreviewIcon
                     ontrigger={(e) => preview.showPreview(e, id)}
                     onrelease={preview.hidePreviewSoon}
