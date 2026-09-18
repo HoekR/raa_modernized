@@ -1250,11 +1250,11 @@ def get_instelling_detail(db: Session, instelling_id: int) -> dict | None:
         actions=[
             {
                 "label": "Personen bij deze instelling",
-                "href": f"/personen?instelling_id={instelling_id}&sort=van",
+                "href": f"/personen?instelling_id={instelling_id}&sort=van&lock=1",
             },
             {
                 "label": "Aanstellingen bij deze instelling",
-                "href": f"/aanstellingen?instelling_id={instelling_id}",
+                "href": f"/aanstellingen?instelling_id={instelling_id}&lock=1",
             },
         ],
         related=[

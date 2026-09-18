@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { goto, replaceState } from '$app/navigation';
+  import { goto } from '$app/navigation';
+  import { commitListUrl } from '$lib/listHistory';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
@@ -81,6 +82,7 @@
   let adelOnly = $state(false);
   let sort = $state('geslachtsnaam');
   let sortDir = $state<'asc' | 'desc'>('asc');
+  let lockInstelling = $state(false);
   let offset = $state(0);
   let refineOpen = $state(false);
   let naamOpen = $state(false);
@@ -117,6 +119,8 @@
       adel: adelOnly,
       functieMatch,
       instellingMatch,
+      sort,
+      lockInstelling,
     };
   }
 
@@ -139,6 +143,8 @@
     functieMatch = parsed.functieMatch;
     instellingMatch = parsed.instellingMatch;
     standIds = parsed.standIds;
+    sort = parsed.sort;
+    lockInstelling = parsed.lockInstelling;
     const [functieItems, instellingItems, stands] = await Promise.all([
       resolveSuggestItems(fetchFunctie, parsed.functieIds),
       resolveSuggestItems(fetchInstelling, parsed.instellingIds),
@@ -222,7 +228,7 @@
   function commitListState() {
     const period = get(periodKey);
     const state = personenUrlState();
-    replaceState(personenListPath(state, period), {});
+    commitListUrl(personenListPath(state, period));
     patchOverviewPersonen(state, period);
   }
 
@@ -561,6 +567,7 @@
           bind:sortDir
           options={[
             ['geslachtsnaam', 'Naam'],
+            ['van', 'Aanstelling'],
             ['geboortedatum', 'Geboren'],
             ['overlijdensdatum', 'Overleden'],
           ]}
@@ -622,13 +629,21 @@
               <td class="date">
                 <span
                   class:estimated={geb.estimated}
-                  title={geb.estimated ? 'Geschat uit aanstellingen' : undefined}>{geb.text}</span
+                  title={geb.estimated
+                    ? 'Geschat uit aanstellingen'
+                    : geb.uncertain
+                      ? 'Onzekere bron-datum'
+                      : undefined}>{geb.text}</span
                 >
               </td>
               <td class="date">
                 <span
                   class:estimated={ovl.estimated}
-                  title={ovl.estimated ? 'Overlijden onbekend; na laatste aanstelling' : undefined}>{ovl.text}</span
+                  title={ovl.estimated
+                    ? 'Overlijden onbekend; na laatste aanstelling'
+                    : ovl.uncertain
+                      ? 'Onzekere bron-datum'
+                      : undefined}>{ovl.text}</span
                 >
               </td>
             </tr>
@@ -683,6 +698,10 @@
           field="instelling"
           bind:selected={instellingen}
           bind:match={instellingMatch}
+          lockedIds={lockInstelling ? instellingen.map((i) => i.id) : []}
+          onUnlock={() => {
+            lockInstelling = false;
+          }}
         />
       </div>
     </fieldset>
@@ -694,7 +713,7 @@
         <ChipSuggest label="Lokaal" field="lokaal" bind:selected={lokalen} showMatch={false} />
       </div>
     </fieldset>
-    <StandAdel bind:standIds bind:adelOnly />
+    <StandAdel bind:standIds bind:adelOnly standFacets={facets.stand ?? null} />
     <button type="button" class="primary" onclick={submit} disabled={loading}>Filters toepassen</button>
   </div>
 </Drawer>

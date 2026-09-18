@@ -90,3 +90,26 @@ def test_functie_instelling_span_ignores_undated_for_extremes():
     assert span.iloc[0]["first_year"] == 1701
     assert span.iloc[0]["last_year"] == 1710
     assert span.iloc[0]["aanstelling_count"] == 2
+
+
+def test_span_ignores_garbage_future_years():
+    from raa_entity_spans.spans import sanitize_aanstelling_years
+
+    aanstelling = pd.DataFrame(
+        [
+            {
+                "id": 1,
+                "functie_id": 1,
+                "instelling_id": 1,
+                "van": "1600-01-01",
+                "tot": "2031-01-01",
+                "van_als_bekend": "1600",
+                "tot_als_bekend": "2031",
+            }
+        ]
+    )
+    cleaned = sanitize_aanstelling_years(aanstelling)
+    assert pd.isna(cleaned.loc[0, "tot"])
+    span = build_functie_instelling_span(cleaned, pd.DataFrame([{"id": 1, "naam": "X"}]))
+    assert span.iloc[0]["first_year"] == 1600
+    assert pd.isna(span.iloc[0]["last_year"]) or span.iloc[0]["last_year"] is None

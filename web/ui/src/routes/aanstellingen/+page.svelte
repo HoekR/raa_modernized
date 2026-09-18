@@ -14,15 +14,17 @@
   import { MAX_CHIPS, pageSize, periodKey, type FacetValue, type SuggestItem } from '$lib/period';
   import { groupNested, loadStands, personName, searchEntity } from '$lib/search';
   import { fetchFunctie, fetchInstelling } from '$lib/detail';
+  import { saveOverviewSnapshot } from '$lib/overviewStore';
+  import { goto } from '$app/navigation';
+  import { commitListUrl } from '$lib/listHistory';
   import {
     applyPeriodFromParams,
     parseAanstellingenParams,
     resolveSuggestItems,
     aanstellingDateChipLabel,
+    listHref,
     type AanstellingenSearchState,
   } from '$lib/searchUrl';
-  import { saveOverviewSnapshot } from '$lib/overviewStore';
-  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { SearchRunGuard } from '$lib/searchRunner';
   import { HoverPreviewController, createPersoonPreviewHandlers } from '$lib/hoverPreview';
@@ -64,6 +66,7 @@
   let standIds = $state<number[]>([]);
   let standLabels = $state<Record<number, string>>({});
   let adelOnly = $state(false);
+  let lockInstelling = $state(false);
   let offset = $state(0);
   let refineOpen = $state(false);
   let summaryOpen = $state(false);
@@ -95,6 +98,7 @@
       instellingMatch,
       groupBy,
       sort,
+      lockInstelling,
     };
   }
 
@@ -113,6 +117,7 @@
     functieMatch = parsed.functieMatch;
     instellingMatch = parsed.instellingMatch;
     standIds = parsed.standIds;
+    lockInstelling = parsed.lockInstelling;
     const [functieItems, instellingItems, stands] = await Promise.all([
       resolveSuggestItems(fetchFunctie, parsed.functieIds),
       resolveSuggestItems(fetchInstelling, parsed.instellingIds),
@@ -219,6 +224,7 @@
       timeline = data.timeline ?? [];
       timelineMeta = data.timeline_meta ?? null;
       hasSearched = true;
+      commitListUrl(listHref('aanstellingen', aanstellingenUrlState(), get(periodKey)));
     } catch (e) {
       if (!searchGuard.isCurrent(token)) return;
       error = e instanceof Error ? e.message : String(e);
@@ -539,6 +545,10 @@
           field="instelling"
           bind:selected={instellingen}
           bind:match={instellingMatch}
+          lockedIds={lockInstelling ? instellingen.map((i) => i.id) : []}
+          onUnlock={() => {
+            lockInstelling = false;
+          }}
         />
       </div>
     </fieldset>
@@ -579,7 +589,7 @@
         <ChipSuggest label="Lokaal" field="lokaal" bind:selected={lokalen} showMatch={false} />
       </div>
     </fieldset>
-    <StandAdel bind:standIds bind:adelOnly />
+    <StandAdel bind:standIds bind:adelOnly standFacets={facets.stand ?? null} />
     <button type="button" class="primary" onclick={submit} disabled={loading}>Filters toepassen</button>
   </div>
 </Drawer>

@@ -113,7 +113,11 @@ def purge_divperioden(extab: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]
 def prepare_extab(extab: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Gate, validate, enrich — shared by staging load and direct import."""
     from raa_life_dates.shadow import enrich_persoon_life_dates
-    from raa_entity_spans.spans import build_functie_attestation, build_functie_instelling_span
+    from raa_entity_spans.spans import (
+        build_functie_attestation,
+        build_functie_instelling_span,
+        sanitize_aanstelling_years,
+    )
     from raa_search_display.shadow import enrich_persoon_search_display
 
     if "persoon" in extab and "aanstelling" in extab:
@@ -124,6 +128,16 @@ def prepare_extab(extab: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         for key, count in gate_stats.items():
             if count:
                 print(f"  {key}: dropped {count}")
+
+    if "aanstelling" in extab:
+        print("Sanitizing implausible aanstelling years...")
+        extab = dict(extab)
+        before_van = int(extab["aanstelling"]["van"].notna().sum()) if "van" in extab["aanstelling"].columns else 0
+        extab["aanstelling"] = sanitize_aanstelling_years(extab["aanstelling"])
+        after_van = int(extab["aanstelling"]["van"].notna().sum()) if "van" in extab["aanstelling"].columns else 0
+        cleared = before_van - after_van
+        if cleared:
+            print(f"  cleared {cleared} aanstelling van/tot with out-of-range years")
 
     if "persoon" in extab and "aanstelling" in extab:
         from raa_life_dates.validate import audit_implausible_recorded_dates, sanitize_implausible_recorded_dates
@@ -146,7 +160,7 @@ def prepare_extab(extab: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         extab["persoon"] = enrich_persoon_life_dates(extab["persoon"], extab["aanstelling"])
 
     if "persoon" in extab:
-        print("Enriching persoon with shadow search_display column...")
+        print("Enriching persoon with search_display + listing_naam...")
         extab = dict(extab)
         extab["persoon"] = enrich_persoon_search_display(
             extab["persoon"],

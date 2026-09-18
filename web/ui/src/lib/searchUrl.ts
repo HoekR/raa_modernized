@@ -42,11 +42,14 @@ export type PersonenSearchState = SharedSearchState & {
   dateMode: 'incl_shadow' | 'exact';
   qMode: NameSearchMode;
   nameParts: PersonenNameParts;
+  sort: string;
+  lockInstelling: boolean;
 };
 
 export type AanstellingenSearchState = SharedSearchState & {
   groupBy: 'instelling' | 'functie';
   sort: string;
+  lockInstelling: boolean;
 };
 
 function parseIds(params: URLSearchParams, key: string): number[] {
@@ -102,6 +105,11 @@ export function parsePersonenParams(params: URLSearchParams): PersonenSearchStat
     qModeRaw === 'contains' || qModeRaw === 'pattern' || qModeRaw === 'exact'
       ? qModeRaw
       : 'prefix';
+  const hasInstelling = shared.instellingIds.length > 0;
+  const sortRaw = params.get('sort');
+  const sort =
+    sortRaw ||
+    (hasInstelling ? 'van' : 'geslachtsnaam');
   return {
     ...shared,
     letter: letter && letter.length === 1 ? letter : null,
@@ -116,6 +124,8 @@ export function parsePersonenParams(params: URLSearchParams): PersonenSearchStat
       alias: params.get('alias') ?? '',
       heerlijkheid: params.get('heerlijkheid') ?? '',
     },
+    sort,
+    lockInstelling: params.get('lock') === '1' && shared.instellingIds.length === 1,
   };
 }
 
@@ -126,6 +136,7 @@ export function parseAanstellingenParams(params: URLSearchParams): Aanstellingen
     ...shared,
     groupBy: groupBy === 'functie' ? 'functie' : 'instelling',
     sort: params.get('sort') ?? 'van',
+    lockInstelling: params.get('lock') === '1' && shared.instellingIds.length === 1,
   };
 }
 
@@ -140,6 +151,10 @@ export function buildPersonenParams(state: PersonenSearchState, period: string):
   for (const [key, value] of Object.entries(state.nameParts)) {
     if (value.trim()) params.set(key, value.trim());
   }
+  const defaultSort = state.instellingIds.length ? 'van' : 'geslachtsnaam';
+  if (state.sort && state.sort !== defaultSort) params.set('sort', state.sort);
+  else if (state.instellingIds.length && state.sort === 'van') params.set('sort', 'van');
+  if (state.lockInstelling && state.instellingIds.length === 1) params.set('lock', '1');
   if (period) params.set('period', period);
   return params;
 }
@@ -152,6 +167,7 @@ export function buildAanstellingenParams(
   writeShared(params, state);
   if (state.groupBy !== 'instelling') params.set('group_by', state.groupBy);
   if (state.sort && state.sort !== 'van') params.set('sort', state.sort);
+  if (state.lockInstelling && state.instellingIds.length === 1) params.set('lock', '1');
   if (period) params.set('period', period);
   return params;
 }

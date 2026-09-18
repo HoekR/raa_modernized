@@ -182,6 +182,15 @@ After enrichment, each person has:
 
 ## 7. Display semantics (UI)
 
+### Uncertainty (`ca.` vs *geschat*) — RS A6
+
+| Marker | Meaning |
+|--------|---------|
+| **`ca. 1775`** | Recorded date exists but is approximate (`onbepaald*` / EDTF `~`) |
+| ***geschat*** | No recorded date; year inferred from appointments (shadow) |
+
+Do **not** show a bare `~` badge in list/detail; strip EDTF qualifiers and use `ca.` for recorded uncertainty.
+
 ### Search result columns (`lifeCell`)
 
 Priority:

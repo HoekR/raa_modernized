@@ -68,6 +68,8 @@
     dateMode: 'incl_shadow',
     qMode: 'prefix',
     nameParts: { ...EMPTY_NAME_PARTS },
+    sort: 'geslachtsnaam',
+    lockInstelling: false,
   });
 
   let aanstellingenState = $state<AanstellingenSearchState>({
@@ -84,7 +86,8 @@
     functieMatch: 'any',
     instellingMatch: 'any',
     groupBy: 'instelling',
-    sort: 'instelling',
+    sort: 'van',
+    lockInstelling: false,
   });
 
   let functieLabels = $state<SuggestItem[]>([]);

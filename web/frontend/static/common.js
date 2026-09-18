@@ -80,7 +80,10 @@ function aanstellingSearchUrl({ functieId = null, instellingId = null } = {}) {
 }
 
 function formatNamens(a) {
-  return [a.provincie, a.regio, a.lokaal, a.stand].filter(Boolean).join(", ");
+  const levels = [a.provincie, a.regio, a.lokaal].filter(Boolean);
+  const core = levels.join(" › ");
+  if (a.stand) return core ? `${core} (${a.stand})` : String(a.stand);
+  return core;
 }
 
 function matchModeValue(form, field) {

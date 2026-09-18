@@ -20,8 +20,33 @@ def _parse_period(value: Any) -> pd.Period | None:
 
 
 def _period_year(value: Any) -> int | None:
+    """Extract calendar year; drop implausible appointment years (e.g. 2031)."""
     period = _parse_period(value)
-    return int(period.year) if period is not None else None
+    if period is None:
+        return None
+    year = int(period.year)
+    # Corpus ends 1861; allow a small margin, reject garbage future years.
+    if year < 1400 or year > 1900:
+        return None
+    return year
+
+
+def sanitize_aanstelling_years(aanstelling: pd.DataFrame) -> pd.DataFrame:
+    """Null van/tot (and als_bekend) when the year is outside plausible bounds."""
+    if aanstelling.empty:
+        return aanstelling
+    result = aanstelling.copy()
+    for col, label_col in (("van", "van_als_bekend"), ("tot", "tot_als_bekend")):
+        if col not in result.columns:
+            continue
+        years = result[col].map(_period_year)
+        bad = result[col].notna() & years.isna()
+        if not bad.any():
+            continue
+        result.loc[bad, col] = pd.NA
+        if label_col in result.columns:
+            result.loc[bad, label_col] = pd.NA
+    return result
 
 
 def _witness_row(frame: pd.DataFrame, date_col: str, *, pick_min: bool) -> pd.Series | None:

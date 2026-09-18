@@ -31,6 +31,8 @@ describe('searchUrl personen roundtrip', () => {
       dateMode: 'exact' as const,
       qMode: 'prefix' as const,
       nameParts: { ...EMPTY_NAME_PARTS },
+      sort: 'geslachtsnaam',
+      lockInstelling: false,
     };
     const params = buildPersonenParams(state, 'republiek');
     const parsed = parsePersonenParams(params);
@@ -40,6 +42,7 @@ describe('searchUrl personen roundtrip', () => {
     expect(parsed.adel).toBe(true);
     expect(parsed.geboorte).toBe('1700/1750');
     expect(parsed.dateMode).toBe('exact');
+    expect(parsed.sort).toBe('van'); // instelling present → default van
     expect(params.get('period')).toBe('republiek');
   });
 
@@ -63,6 +66,8 @@ describe('searchUrl personen roundtrip', () => {
       geboorte: '',
       overlijden: '',
       dateMode: 'incl_shadow',
+      sort: 'geslachtsnaam',
+      lockInstelling: false,
     });
     expect(filters.functie_id).toEqual(['561']);
     expect(filters.letter).toEqual(['A']);
@@ -112,6 +117,7 @@ describe('searchUrl aanstellingen roundtrip', () => {
       instellingMatch: 'any' as const,
       groupBy: 'instelling' as const,
       sort: 'instelling',
+      lockInstelling: false,
     };
     const params = buildAanstellingenParams(state, 'all');
     expect(params.get('sort')).toBe('instelling');
@@ -134,6 +140,7 @@ describe('searchUrl aanstellingen roundtrip', () => {
       instellingMatch: 'any' as const,
       groupBy: 'functie' as const,
       sort: 'van',
+      lockInstelling: false,
     };
     const parsed = parseAanstellingenParams(buildAanstellingenParams(state, 'all'));
     expect(parsed.functieIds).toEqual([1316]);

@@ -25,6 +25,7 @@ _DERIVED_COLS = (
     "life_start_source",
     "life_end_source",
     "search_display",
+    "listing_naam",
 )
 
 
