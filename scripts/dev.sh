@@ -41,14 +41,25 @@ for arg in "$@"; do
   esac
 done
 
-# Prefer compose; fall back when the compose plugin is broken (D-42 / D-53).
+# Prefer compose plugin; fall back when broken (D-42 / D-53).
+# Note: a stale /usr/local/bin/docker-compose symlink may exist but print "Not Found".
 compose() {
   if docker compose version >/dev/null 2>&1; then
     docker compose -f "$COMPOSE_FILE" "$@"
-  elif command -v docker-compose >/dev/null 2>&1; then
+  elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
     docker-compose -f "$COMPOSE_FILE" "$@"
   else
-    echo "Neither 'docker compose' nor 'docker-compose' is available." >&2
+    echo "Neither 'docker compose' nor a working 'docker-compose' is available." >&2
+    echo "Start Docker Desktop, then retry. If compose still fails:" >&2
+    echo "  docker compose version   # should print Compose version …" >&2
+    echo "  # or: brew install docker-compose" >&2
+    exit 1
+  fi
+}
+
+ensure_docker() {
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker is not running. Open Docker Desktop, wait until it is ready, then retry." >&2
     exit 1
   fi
 }
@@ -139,6 +150,7 @@ if [[ "$ACTION" == "stop" ]]; then
 fi
 
 cd "$ROOT"
+ensure_docker
 sync_deps
 ensure_compose_db
 wait_for_postgres

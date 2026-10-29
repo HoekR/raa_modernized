@@ -9,6 +9,7 @@ Chronological record of **why** the legacy Huygens RAA site was migrated this wa
 | [PLAN.md](../PLAN.md) | Target architecture, phases, open work |
 | [LEGACY-UX.md](../LEGACY-UX.md) | How the old Huygens UI worked (zoekhulp + source code) |
 | [DATA.md](DATA.md) | Manifest tiers, `data_io` workflow |
+| [CAREER_PATTERNS.md](CAREER_PATTERNS.md) | Research lab: sequences + transitions (not web UI) |
 | [dighum_web_template](file:///Users/rikhoekstra/develop/dighum_web_template) | Reusable web bootstrap (sibling repo) |
 
 **Legacy reference**
@@ -116,6 +117,14 @@ Strategic choices, ordered by topic. Status: **decided** | **pilot** | **deferre
 - Bundled TinyMCE 2.x
 - Elasticsearch in production (unless gate reopens)
 - Observable dashboards (separate pattern)
+
+### Research analysis (outside web app)
+
+| ID | Decision | Rationale | Status |
+|----|----------|-----------|--------|
+| D-70 | **Career pattern analysis** as package `raa_career_patterns/` + CLI/notebook, not search/editorial UI | Historians need sequences/transitions without coupling to public app; reuse `raa.aanstelling`; scratch parquet via `data_io` | **decided** (2026-10-14) |
+| D-71 | v1 = sequences + transition matrices only; no false ambtsketen continuity | Matches entity-span caveat; overlaps flagged, not merged | **decided** (2026-10-14) |
+| D-72 | Career track framed as **politics & influence**; F-RQ0 = wetsverzetting vs quiet windows (personnel continuity + Generaliteit/supra/local layers) | Global matrices uninformative; RQ-first; discontinuities may be historical or editorial (D-56) | **decided** (2026-10-14) |
 
 ---
 

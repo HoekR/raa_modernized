@@ -73,6 +73,15 @@ Tail logs:
 tail -f .run/api.log .run/ui.log .run/admin.log
 ```
 
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `Docker is not running` | Open **Docker Desktop**, wait until the whale icon is idle, retry |
+| `/usr/local/bin/docker-compose: line 1: Not: command not found` | Stale stub; ignore it. After Desktop is up, `docker compose version` should work. Script falls back only if that binary actually runs |
+| `docker: 'compose' is not a docker command` | Update/reinstall Docker Desktop, or `brew install docker-compose` |
+| Port already in use | `./scripts/stop_app.sh` or free :8000 / :5173 / :5174 |
+
 ## Manual (foreground, three terminals)
 
 Use this when you want reload output in the terminal.

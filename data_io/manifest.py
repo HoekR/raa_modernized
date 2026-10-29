@@ -97,13 +97,26 @@ class DataManager:
     def __init__(self, manifest_path: Path | None = None) -> None:
         self.manifest_path = manifest_path or find_manifest_path()
         self._raw = load_manifest_dict(self.manifest_path)
-        self.tiers = self._parse_tiers(self._raw.get("tiers", {}))
+        self.tiers = self._parse_tiers(
+            self._raw.get("tiers", {}),
+            base_dir=self.manifest_path.parent,
+        )
         self.datasets = self._parse_datasets(self._raw.get("datasets", {}))
         self._maybe_autofill_tiers_from_environments()
 
     @staticmethod
-    def _parse_tiers(raw: dict[str, Any]) -> dict[str, TierConfig]:
+    def _parse_tiers(
+        raw: dict[str, Any],
+        *,
+        base_dir: Path | None = None,
+    ) -> dict[str, TierConfig]:
+        """Parse tier roots. Relative roots are anchored to ``base_dir``
+
+        (manifest directory), not the process cwd — so notebooks under
+        ``notebooks/`` still resolve ``./output`` to the repo ``output/``.
+        """
         tiers: dict[str, TierConfig] = {}
+        anchor = (base_dir or Path.cwd()).resolve()
         for name, cfg in raw.items():
             if not isinstance(cfg, dict):
                 continue
@@ -111,6 +124,10 @@ class DataManager:
             root = _expand_path(cfg.get("root"))
             if root is None:
                 raise ValueError(f"Tier {name!r} is missing root")
+            if not root.is_absolute():
+                root = (anchor / root).resolve()
+            if mount_check is not None and not mount_check.is_absolute():
+                mount_check = (anchor / mount_check).resolve()
             tiers[name] = TierConfig(root=root, mount_check=mount_check)
         return tiers
 

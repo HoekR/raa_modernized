@@ -2,7 +2,7 @@
 
 Modern web port of the **Huygens RAA** (Repertorium Aanstellingen Amsterdam) corpus: `extab.pkl` → Postgres → FastAPI search → SvelteKit UI, plus a separate **redactie** app for editorial amendments.
 
-Read **`PLAN.md`**, **`docs/MIGRATION_LOG.md`**, and **`docs/DATA.md`** before pipeline or web work. Legacy UX reference: **`LEGACY-UX.md`**.
+Read **`PLAN.md`**, **`docs/MIGRATION_LOG.md`**, and **`docs/DATA.md`** before pipeline or web work. Legacy UX reference: **`LEGACY-UX.md`**. Hosting for colleagues: **`docs/HOSTING_HANDOFF.md`**.
 
 ## What lives where
 
@@ -16,6 +16,7 @@ Read **`PLAN.md`**, **`docs/MIGRATION_LOG.md`**, and **`docs/DATA.md`** before p
 | `raa_life_dates/` | EDTF, shadow life years, plausibility validation |
 | `raa_search_display/` | `search_display`, listing names |
 | `raa_entity_spans/` | Institution/function span tables |
+| `raa_career_patterns/` | Research lab: career sequences + transitions (not web UI) |
 | `web/api/` | FastAPI (`raa_api`) — search, detail, editorial API |
 | `web/ui/` | Public SvelteKit UI `:5173` |
 | `web/admin/` | Editorial SvelteKit app `:5174` |
@@ -30,6 +31,7 @@ Read **`PLAN.md`**, **`docs/MIGRATION_LOG.md`**, and **`docs/DATA.md`** before p
 | **C** | SvelteKit UI — in progress (C1–C3 shipped; static pilot kept until beta) |
 | **D** | Deploy read-only pilot — planned |
 | **E** | Editorial layer — **E0–E5 shipped** (amendments, grid, Excel import) |
+| **F** | Career patterns research lab — **F1–F4 shipped** (sequences + transitions); see [docs/CAREER_PATTERNS.md](docs/CAREER_PATTERNS.md) |
 
 ## Data paths (strict)
 

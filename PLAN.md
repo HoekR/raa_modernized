@@ -73,6 +73,19 @@ Check items off here when shipped; log decisions in [MIGRATION_LOG.md](docs/MIGR
 - [x] **C3** — SvelteKit detail pages (persoon / instelling / functie) with theme
 - [ ] **C4** — retire static pilot (**deferred until beta**; keep `/static/` alongside SvelteKit for now)
 
+### Track F — Career pattern analysis (research lab, not web)
+
+Politics & influence framing. Package `raa_career_patterns/` + CLI/notebook. **Not** wired into search UI. Docs: [CAREER_PATTERNS.md](docs/CAREER_PATTERNS.md) · RQs: [CAREER_RQS.md](docs/CAREER_RQS.md).
+
+- [x] **F1** — events normalize/load from `raa.aanstelling`
+- [x] **F2** — per-person sequences + overlap groups
+- [x] **F3** — pairwise transitions + aggregate matrices (`functie` / `instelling` / `office`)
+- [x] **F4** — CLI (`scripts/career_patterns.py`) + scratch datasets + explore notebook
+- [x] **F-RQ0** — wetsverzetting vs quiet windows: personnel continuity + influence layers
+- [ ] **F5** — mobility / co-tenure (backlog)
+- [ ] **F6** — frequent path mining (backlog)
+- [ ] **F7** — bipartite person↔institution (separate from UI 14c)
+
 ### Backlog (blocked or low priority)
 
 - [ ] **B3f** — legacy Huygens → modern ID concordance table + lookup/redirect — D-58 (needs user’s mapping file)

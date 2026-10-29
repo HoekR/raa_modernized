@@ -16,6 +16,9 @@ dependencies = [
     "ipykernel",
     "sqlalchemy>=2.0.51",
     "psycopg[binary]>=3.3.4",
+    # Used by scripts/import_release.py → raa_api.editorial (HTML sanitize)
+    "nh3>=0.3.6",
+    "matplotlib>=3.11.2",
 ]
 
 [dependency-groups]
@@ -24,7 +27,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["data_io", "tests", "raa_life_dates*", "raa_entity_spans*", "raa_search_display*"]
+include = ["data_io", "tests", "raa_life_dates*", "raa_entity_spans*", "raa_search_display*", "raa_career_patterns*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -7,7 +7,7 @@
 [manifest]
 version = "1.0.0"
 project = "raa-modernized"
-last_updated = "2026-07-07"
+last_updated = "2026-10-14"
 
 # -----------------------------------------------------------------------------
 # Environment base directories (optional)
@@ -68,3 +68,45 @@ path = "raa_convert/extab.pkl"
 phase = "frozen"
 description = "Consolidated RAA export (extab.pkl from raa_convert)"
 parent = ""
+
+[datasets.career_events]
+tier = "scratch"
+path = "career_patterns/career_events.parquet"
+phase = "semi"
+description = "Normalized aanstelling career events (from Postgres)"
+parent = "raa_extab"
+
+[datasets.career_sequences]
+tier = "scratch"
+path = "career_patterns/career_sequences.parquet"
+phase = "semi"
+description = "Per-person ordered career sequences with overlap groups"
+parent = "career_events"
+
+[datasets.career_transitions]
+tier = "scratch"
+path = "career_patterns/career_transitions.parquet"
+phase = "semi"
+description = "Consecutive appointment transitions (edge list)"
+parent = "career_sequences"
+
+[datasets.career_transition_matrix]
+tier = "scratch"
+path = "career_patterns/career_transition_matrix.parquet"
+phase = "semi"
+description = "Aggregated transition counts and row probabilities"
+parent = "career_transitions"
+
+[datasets.career_discontinuity_summary]
+tier = "scratch"
+path = "career_patterns/career_discontinuity_summary.parquet"
+phase = "semi"
+description = "F-RQ0 summary: influence continuity across cut vs quiet windows"
+parent = "career_events"
+
+[datasets.career_discontinuity_crossings]
+tier = "scratch"
+path = "career_patterns/career_discontinuity_crossings.parquet"
+phase = "semi"
+description = "F-RQ0 person-level pre/post cut appointments and layer moves"
+parent = "career_events"

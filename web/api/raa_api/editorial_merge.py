@@ -40,7 +40,24 @@ def _norm(value: Any) -> str | None:
     return text_val if text_val else None
 
 
+def _table_exists(conn, schema: str, table: str) -> bool:
+    return (
+        conn.execute(
+            text(
+                """
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = :schema AND table_name = :table
+                """
+            ),
+            {"schema": schema, "table": table},
+        ).first()
+        is not None
+    )
+
+
 def _cell(conn, schema: str, table: str, field: str, entity_id: int) -> str | None:
+    if not _table_exists(conn, schema, table):
+        return None
     row = conn.execute(
         text(f"SELECT {field} FROM {schema}.{table} WHERE id = :id"),
         {"id": entity_id},
@@ -53,6 +70,8 @@ def _cell(conn, schema: str, table: str, field: str, entity_id: int) -> str | No
 def detect_merge_conflicts(conn, release_id: str) -> list[dict[str, Any]]:
     """Compare active amendments against staging import; return conflict rows to insert."""
     conflicts: list[dict[str, Any]] = []
+    if not _table_exists(conn, "editorial", "amendments"):
+        return conflicts
     amendments = conn.execute(
         text(
             """
@@ -126,21 +145,23 @@ def insert_conflicts(conn, conflicts: list[dict[str, Any]]) -> int:
 
 
 def copy_staging_to_raa(conn, tables: list[str]) -> None:
+    """Replace raa.* from staging. On first import, create missing raa tables."""
+    conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {RAA_SCHEMA}"))
     for table in tables:
         if table not in TABLE_ORDER:
             continue
-        exists = conn.execute(
-            text(
-                """
-                SELECT 1 FROM information_schema.tables
-                WHERE table_schema = :schema AND table_name = :table
-                """
-            ),
-            {"schema": STAGING_SCHEMA, "table": table},
-        ).first()
-        if not exists:
+        if not _table_exists(conn, STAGING_SCHEMA, table):
             continue
-        conn.execute(text(f"DELETE FROM {RAA_SCHEMA}.{table}"))
+        if not _table_exists(conn, RAA_SCHEMA, table):
+            # Fresh DB: clone structure (and later fill) from staging.
+            conn.execute(
+                text(
+                    f"CREATE TABLE {RAA_SCHEMA}.{table} "
+                    f"(LIKE {STAGING_SCHEMA}.{table} INCLUDING ALL)"
+                )
+            )
+        else:
+            conn.execute(text(f"DELETE FROM {RAA_SCHEMA}.{table}"))
         conn.execute(
             text(f"INSERT INTO {RAA_SCHEMA}.{table} SELECT * FROM {STAGING_SCHEMA}.{table}")
         )
@@ -150,17 +171,34 @@ def rebuild_span_tables(conn) -> None:
     """Rebuild derived span tables from merged aanstelling."""
     from raa_entity_spans.spans import build_functie_attestation, build_functie_instelling_span
 
+    if not _table_exists(conn, RAA_SCHEMA, "aanstelling"):
+        return
+
     aanst = pd.read_sql(text("SELECT * FROM raa.aanstelling"), conn)
     inst = pd.read_sql(text("SELECT * FROM raa.instelling"), conn)
     span = build_functie_instelling_span(aanst, inst)
     attestation = build_functie_attestation(span, aanst, inst)
-    span["import_release_id"] = conn.execute(
+    release_id = conn.execute(
         text("SELECT import_release_id FROM raa.aanstelling LIMIT 1")
     ).scalar()
-    attestation["import_release_id"] = span["import_release_id"].iloc[0] if len(span) else None
-    conn.execute(text("DELETE FROM raa.functie_instelling_span"))
-    conn.execute(text("DELETE FROM raa.functie_attestation"))
-    if not span.empty:
+    span["import_release_id"] = release_id
+    attestation["import_release_id"] = release_id if len(span) else None
+
+    for table in ("functie_instelling_span", "functie_attestation"):
+        if not _table_exists(conn, RAA_SCHEMA, table):
+            # Should already exist via staging copy; create empty shell if needed.
+            if _table_exists(conn, STAGING_SCHEMA, table):
+                conn.execute(
+                    text(
+                        f"CREATE TABLE {RAA_SCHEMA}.{table} "
+                        f"(LIKE {STAGING_SCHEMA}.{table} INCLUDING ALL)"
+                    )
+                )
+            else:
+                continue
+        conn.execute(text(f"DELETE FROM {RAA_SCHEMA}.{table}"))
+
+    if not span.empty and _table_exists(conn, RAA_SCHEMA, "functie_instelling_span"):
         span.to_sql(
             "functie_instelling_span",
             conn,
@@ -170,7 +208,7 @@ def rebuild_span_tables(conn) -> None:
             method="multi",
             chunksize=500,
         )
-    if not attestation.empty:
+    if not attestation.empty and _table_exists(conn, RAA_SCHEMA, "functie_attestation"):
         attestation.to_sql(
             "functie_attestation",
             conn,

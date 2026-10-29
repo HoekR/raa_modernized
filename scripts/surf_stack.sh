@@ -20,10 +20,11 @@ HOST="${SURF_PUBLIC_HOST:-localhost}"
 compose() {
   if docker compose version >/dev/null 2>&1; then
     docker compose -f "$COMPOSE" "$@"
-  elif command -v docker-compose >/dev/null 2>&1; then
+  elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
     docker-compose -f "$COMPOSE" "$@"
   else
-    echo "Need docker compose or docker-compose plugin." >&2
+    echo "Need a working 'docker compose' or 'docker-compose'." >&2
+    echo "Start Docker Desktop; check: docker compose version" >&2
     exit 1
   fi
 }

@@ -12,7 +12,7 @@ Decouple code from disk layout using `data_manifest.toml` and `data_io`.
 | **cold** | Raw archives (zip, XML dumps) |
 | **collab** | SurfDrive / Nextcloud shared data |
 
-**Scratch fallback:** when the scratch drive is unplugged, point the scratch tier at `./output` in `data_manifest.local.toml` (see `output/README.md`). Pipeline writes still go through `data_io` — not ad-hoc files in `notebooks/`.
+**Scratch fallback:** when the scratch drive is unplugged, point the scratch tier at `./output` in `data_manifest.local.toml` (see `output/README.md`). Relative tier roots are resolved against the **manifest directory** (repo root), not the process cwd — so notebooks under `notebooks/` still hit repo `output/`. Pipeline writes still go through `data_io` — not ad-hoc files in `notebooks/`.
 
 ## Workspaces
 

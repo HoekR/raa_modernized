@@ -64,6 +64,34 @@ def test_resolve_paths(manifest_dir: Path) -> None:
     assert manager.resolve("sample_jsonl") == manifest_dir / "scratch" / "out" / "sample.jsonl"
 
 
+def test_relative_tier_root_anchors_to_manifest_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Relative ./output must not depend on process cwd (notebooks/)."""
+    manifest = tmp_path / "data_manifest.toml"
+    (tmp_path / "output").mkdir()
+    manifest.write_text(
+        """
+[tiers.scratch]
+root = "./output"
+mount_check = ""
+
+[datasets.career_sequences]
+tier = "scratch"
+path = "career_patterns/career_sequences.parquet"
+phase = "semi"
+""",
+        encoding="utf-8",
+    )
+    elsewhere = tmp_path / "notebooks"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    manager = DataManager(manifest)
+    assert manager.resolve("career_sequences") == (
+        tmp_path / "output" / "career_patterns" / "career_sequences.parquet"
+    )
+
+
 def test_tier_unavailable_raises(tmp_path: Path) -> None:
     manifest = tmp_path / "data_manifest.toml"
     missing = tmp_path / "missing_volume"
